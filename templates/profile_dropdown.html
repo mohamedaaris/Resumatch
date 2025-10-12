@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Profile - ResuMatch AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .profile-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .profile-section {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .section-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #f8f9fa;
+        }
+        .section-title {
+            font-weight: 600;
+            color: #495057;
+            margin: 0;
+        }
+        .edit-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 0.25rem 0.75rem;
+            border-radius: 5px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .edit-btn:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+        .skill-tag {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            margin: 0.25rem;
+            display: inline-block;
+        }
+        .location-tag {
+            background: #f3e5f5;
+            color: #7b1fa2;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            margin: 0.25rem;
+            display: inline-block;
+        }
+        .experience-item {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .project-item {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .certification-item {
+            background: #e8f5e8;
+            border-left: 4px solid #4caf50;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .achievement-item {
+            background: #fce4ec;
+            border-left: 4px solid #e91e63;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .edit-form {
+            display: none;
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+        .edit-form.show {
+            display: block;
+        }
+        .form-control {
+            margin-bottom: 0.5rem;
+        }
+        .btn-save {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            margin-right: 0.5rem;
+        }
+        .btn-cancel {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+        }
+        .recommendation-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 25px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+        .recommendation-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <!-- Profile Header -->
+        <div class="profile-card text-center">
+            <h1 class="mb-3">
+                <i class="fas fa-user-circle me-2"></i>
+                Professional Profile
+            </h1>
+            <p class="mb-0">Your AI-powered resume analysis and career insights</p>
+        </div>
+
+        <!-- Personal Information -->
+        <div class="profile-section">
+            <div class="section-header">
+                <h3 class="section-title">
+                    <i class="fas fa-user me-2"></i>Personal Information
+                </h3>
+                <button class="edit-btn" onclick="toggleEdit('personal')">
+                    <i class="fas fa-edit me-1"></i>Edit
+                </button>
+            </div>
+            
+            <div id="personal-content">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Name:</strong> {{ processed_data.get('name', 'Not specified') }}</p>
+                        <p><strong>Email:</strong> {{ processed_data.get('email', 'Not specified') }}</p>
+                        <p><strong>Phone:</strong> {{ processed_data.get('phone', 'Not specified') }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Location:</strong> {{ processed_data.get('location', 'Not specified') }}</p>
+                        <p><strong>LinkedIn:</strong> {{ processed_data.get('linkedin', 'Not specified') }}</p>
+                        <p><strong>Portfolio:</strong> {{ processed_data.get('portfolio', 'Not specified') }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="personal-edit" class="edit-form">
+                <div class="row">
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" id="edit-name" placeholder="Full Name" value="{{ processed_data.get('name', '') }}">
+                        <input type="email" class="form-control" id="edit-email" placeholder="Email" value="{{ processed_data.get('email', '') }}">
+                        <input type="tel" class="form-control" id="edit-phone" placeholder="Phone" value="{{ processed_data.get('phone', '') }}">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" id="edit-location" placeholder="Location" value="{{ processed_data.get('location', '') }}">
+                        <input type="url" class="form-control" id="edit-linkedin" placeholder="LinkedIn URL" value="{{ processed_data.get('linkedin', '') }}">
+                        <input type="url" class="form-control" id="edit-portfolio" placeholder="Portfolio URL" value="{{ processed_data.get('portfolio', '') }}">
+                    </div>
+                </div>
+                <button class="btn-save" onclick="saveSection('personal')">Save</button>
+                <button class="btn-cancel" onclick="cancelEdit('personal')">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Skills -->
+        <div class="profile-section">
+            <div class="section-header">
+                <h3 class="section-title">
+                    <i class="fas fa-tools me-2"></i>Technical Skills
+                </h3>
+                <button class="edit-btn" onclick="toggleEdit('skills')">
+                    <i class="fas fa-edit me-1"></i>Edit
+                </button>
+            </div>
+            
+            <div id="skills-content">
+                {% for skill in processed_data.get('skills', []) %}
+                <span class="skill-tag">{{ skill }}</span>
+                {% endfor %}
+            </div>
+            
+            <div id="skills-edit" class="edit-form">
+                <textarea class="form-control" id="edit-skills" rows="3" placeholder="Enter skills separated by commas">{{ processed_data.get('skills', []) | join(', ') }}</textarea>
+                <button class="btn-save" onclick="saveSection('skills')">Save</button>
+                <button class="btn-cancel" onclick="cancelEdit('skills')">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Experience -->
+        <div class="profile-section">
+            <div class="section-header">
+                <h3 class="section-title">
+                    <i class="fas fa-briefcase me-2"></i>Work Experience
+                </h3>
+                <button class="edit-btn" onclick="toggleEdit('experience')">
+                    <i class="fas fa-edit me-1"></i>Edit
+                </button>
+            </div>
+            
+            <div id="experience-content">
+                {% for exp in processed_data.get('experience', []) %}
+                <div class="experience-item">
+                    <h5>{{ exp.get('position', 'Position not specified') }}</h5>
+                    <p class="text-muted">{{ exp.get('company', 'Company not specified') }} | {{ exp.get('dates', 'Dates not specified') }}</p>
+                    <p>{{ exp.get('description', 'No description available') }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div id="experience-edit" class="edit-form">
+                <textarea class="form-control" id="edit-experience" rows="5" placeholder="Enter experience details">{{ processed_data.get('experience', []) | tojson }}</textarea>
+                <button class="btn-save" onclick="saveSection('experience')">Save</button>
+                <button class="btn-cancel" onclick="cancelEdit('experience')">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Projects -->
+        <div class="profile-section">
+            <div class="section-header">
+                <h3 class="section-title">
+                    <i class="fas fa-project-diagram me-2"></i>Projects
+                </h3>
+                <button class="edit-btn" onclick="toggleEdit('projects')">
+                    <i class="fas fa-edit me-1"></i>Edit
+                </button>
+            </div>
+            
+            <div id="projects-content">
+                {% for project in processed_data.get('projects', []) %}
+                <div class="project-item">
+                    <h5>{{ project.get('name', 'Project name not specified') }}</h5>
+                    <p>{{ project.get('description', 'No description available') }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div id="projects-edit" class="edit-form">
+                <textarea class="form-control" id="edit-projects" rows="5" placeholder="Enter project details">{{ processed_data.get('projects', []) | tojson }}</textarea>
+                <button class="btn-save" onclick="saveSection('projects')">Save</button>
+                <button class="btn-cancel" onclick="cancelEdit('projects')">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Certifications -->
+        <div class="profile-section">
+            <div class="section-header">
+                <h3 class="section-title">
+                    <i class="fas fa-certificate me-2"></i>Certifications
+                </h3>
+                <button class="edit-btn" onclick="toggleEdit('certifications')">
+                    <i class="fas fa-edit me-1"></i>Edit
+                </button>
+            </div>
+            
+            <div id="certifications-content">
+                {% for cert in processed_data.get('certifications', []) %}
+                <div class="certification-item">
+                    <h5>{{ cert.get('name', 'Certification name not specified') }}</h5>
+                    <p class="text-muted">{{ cert.get('issuer', 'Issuer not specified') }} | {{ cert.get('date', 'Date not specified') }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div id="certifications-edit" class="edit-form">
+                <textarea class="form-control" id="edit-certifications" rows="4" placeholder="Enter certification details">{{ processed_data.get('certifications', []) | tojson }}</textarea>
+                <button class="btn-save" onclick="saveSection('certifications')">Save</button>
+                <button class="btn-cancel" onclick="cancelEdit('certifications')">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Achievements -->
+        <div class="profile-section">
+            <div class="section-header">
+                <h3 class="section-title">
+                    <i class="fas fa-trophy me-2"></i>Achievements
+                </h3>
+                <button class="edit-btn" onclick="toggleEdit('achievements')">
+                    <i class="fas fa-edit me-1"></i>Edit
+                </button>
+            </div>
+            
+            <div id="achievements-content">
+                {% for achievement in processed_data.get('achievements', []) %}
+                <div class="achievement-item">
+                    <p><i class="fas fa-star me-2"></i>{{ achievement }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div id="achievements-edit" class="edit-form">
+                <textarea class="form-control" id="edit-achievements" rows="3" placeholder="Enter achievements">{{ processed_data.get('achievements', []) | join('\n') }}</textarea>
+                <button class="btn-save" onclick="saveSection('achievements')">Save</button>
+                <button class="btn-cancel" onclick="cancelEdit('achievements')">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Fields of Interest -->
+        <div class="profile-section">
+            <div class="section-header">
+                <h3 class="section-title">
+                    <i class="fas fa-heart me-2"></i>Fields of Interest
+                </h3>
+                <button class="edit-btn" onclick="toggleEdit('interests')">
+                    <i class="fas fa-edit me-1"></i>Edit
+                </button>
+            </div>
+            
+            <div id="interests-content">
+                {% for interest in processed_data.get('fields_of_interest', []) %}
+                <span class="location-tag">{{ interest }}</span>
+                {% endfor %}
+            </div>
+            
+            <div id="interests-edit" class="edit-form">
+                <textarea class="form-control" id="edit-interests" rows="2" placeholder="Enter fields of interest separated by commas">{{ processed_data.get('fields_of_interest', []) | join(', ') }}</textarea>
+                <button class="btn-save" onclick="saveSection('interests')">Save</button>
+                <button class="btn-cancel" onclick="cancelEdit('interests')">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="text-center mt-4">
+            <a href="/recommendations?data={{ session_data | tojson | urlencode }}" class="recommendation-btn">
+                <i class="fas fa-magic me-2"></i>Get AI Job Recommendations
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleEdit(section) {
+            const content = document.getElementById(section + '-content');
+            const edit = document.getElementById(section + '-edit');
+            
+            if (edit.classList.contains('show')) {
+                edit.classList.remove('show');
+                content.style.display = 'block';
+            } else {
+                edit.classList.add('show');
+                content.style.display = 'none';
+            }
+        }
+
+        function cancelEdit(section) {
+            const content = document.getElementById(section + '-content');
+            const edit = document.getElementById(section + '-edit');
+            
+            edit.classList.remove('show');
+            content.style.display = 'block';
+        }
+
+        async function saveSection(section) {
+            try {
+                const payload = { processed_data: {} };
+                if (section === 'personal') {
+                    payload.processed_data.name = document.getElementById('edit-name').value.trim();
+                    payload.processed_data.email = document.getElementById('edit-email').value.trim();
+                    payload.processed_data.phone = document.getElementById('edit-phone').value.trim();
+                    payload.processed_data.location = document.getElementById('edit-location').value.trim();
+                    payload.processed_data.linkedin = document.getElementById('edit-linkedin').value.trim();
+                    payload.processed_data.portfolio = document.getElementById('edit-portfolio').value.trim();
+                } else if (section === 'skills') {
+                    const txt = document.getElementById('edit-skills').value.trim();
+                    payload.processed_data.skills = txt ? txt.split(',').map(s => s.trim()).filter(Boolean) : [];
+                } else if (section === 'experience') {
+                    try { payload.processed_data.experience = JSON.parse(document.getElementById('edit-experience').value || '[]'); } catch {}
+                } else if (section === 'projects') {
+                    try { payload.processed_data.projects = JSON.parse(document.getElementById('edit-projects').value || '[]'); } catch {}
+                } else if (section === 'certifications') {
+                    try { payload.processed_data.certifications = JSON.parse(document.getElementById('edit-certifications').value || '[]'); } catch {}
+                } else if (section === 'achievements') {
+                    const atxt = document.getElementById('edit-achievements').value.trim();
+                    payload.processed_data.achievements = atxt ? atxt.split('\n').map(s => s.trim()).filter(Boolean) : [];
+                } else if (section === 'interests') {
+                    const itxt = document.getElementById('edit-interests').value.trim();
+                    const arr = itxt ? itxt.split(',').map(s => s.trim()).filter(Boolean) : [];
+                    payload.processed_data.fields_of_interest = arr;
+                    payload.processed_data.field_of_interest = arr;
+                }
+                const res = await fetch('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to save');
+                // Reload to reflect persisted changes
+                window.location.reload();
+            } catch (e) {
+                alert('Save failed: ' + e.message);
+            }
+        }
+    </script>
+</body>
+</html>

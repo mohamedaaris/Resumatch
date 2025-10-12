@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}Available Jobs - ResuMatch AI{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-briefcase me-2"></i>Available Internships
+                    </h2>
+                    <p class="text-muted mb-0">Discover amazing internship opportunities across various fields</p>
+                </div>
+                <div>
+                    <span class="badge bg-primary fs-6">{{ jobs|length }} Positions Available</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label for="locationFilter" class="form-label">Location</label>
+                            <select class="form-select" id="locationFilter">
+                                <option value="">All Locations</option>
+                                {% for loc in locations %}
+                                    <option value="{{ loc }}">{{ loc }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="durationFilter" class="form-label">Duration</label>
+                            <select class="form-select" id="durationFilter">
+                                <option value="">All Durations</option>
+                                <option value="3 months">3 months</option>
+                                <option value="4 months">4 months</option>
+                                <option value="5 months">5 months</option>
+                                <option value="6 months">6 months</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="categoryFilter" class="form-label">Category</label>
+                            <select class="form-select" id="categoryFilter">
+                                <option value="">All Categories</option>
+                                <option value="Software Engineering">Software Engineering</option>
+                                <option value="Data Science">Data Science</option>
+                                <option value="Frontend Development">Frontend Development</option>
+                                <option value="Backend Development">Backend Development</option>
+                                <option value="AI/ML">AI/ML</option>
+                                <option value="DevOps">DevOps</option>
+                                <option value="Cybersecurity">Cybersecurity</option>
+                                <option value="Mobile Development">Mobile Development</option>
+                                <option value="Design">Design</option>
+                                <option value="Marketing">Marketing</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="searchInput" class="form-label">Search</label>
+                            <input type="text" class="form-control" id="searchInput" placeholder="Search jobs...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Jobs Grid -->
+    <div class="row" id="jobsGrid">
+        {% for job in jobs %}
+        <div class="col-lg-4 col-md-6 mb-4 job-card" 
+             data-location="{{ job.location }}" 
+             data-duration="{{ job.duration }}"
+             data-category="{{ job.title }}"
+             data-title="{{ job.title|lower }}"
+             data-company="{{ job.company|lower }}"
+             data-description="{{ job.description|lower }}">
+            <div class="card h-100 job-card-item">
+                <div class="card-header bg-gradient-primary text-white">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="card-title mb-1">{{ job.title }}</h6>
+                            <small class="opacity-75">{{ job.company }}</small>
+                        </div>
+                        <span class="badge bg-light text-dark">{{ job.id }}</span>
+                    </div>
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-map-marker-alt text-primary me-2"></i>
+                            <small class="text-muted">{{ job.location }}</small>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-clock text-success me-2"></i>
+                            <small class="text-muted">{{ job.duration }}</small>
+                        </div>
+                    </div>
+                    
+                    <p class="card-text flex-grow-1">{{ job.description[:120] }}{% if job.description|length > 120 %}...{% endif %}</p>
+                    
+                    <div class="mb-3">
+                        <h6 class="mb-2">Key Skills:</h6>
+                        <div class="d-flex flex-wrap">
+                            {% for req in job.requirements[:4] %}
+                                <span class="badge bg-secondary me-1 mb-1">{{ req }}</span>
+                            {% endfor %}
+                            {% if job.requirements|length > 4 %}
+                                <span class="badge bg-light text-dark me-1 mb-1">+{{ job.requirements|length - 4 }} more</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary btn-sm" onclick="showJobDetails({{ job.id }})">
+                            <i class="fas fa-eye me-1"></i>View Details
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="copyJobInfo({{ job.id }})">
+                            <i class="fas fa-copy me-1"></i>Copy Info
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- No Results Message -->
+    <div class="row d-none" id="noResults">
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-search text-muted mb-3" style="font-size: 3rem;"></i>
+                <h4 class="text-muted">No jobs found</h4>
+                <p class="text-muted">Try adjusting your filters or search terms</p>
+                <button class="btn btn-outline-primary" onclick="clearFilters()">
+                    <i class="fas fa-refresh me-2"></i>Clear Filters
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Job Details Modal -->
+<div class="modal fade" id="jobDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="jobDetailsTitle">Job Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="jobDetailsBody">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="copyJobInfo()">Copy Info</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const jobs = {{ jobs|tojson }};
+
+// Filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const locationFilter = document.getElementById('locationFilter');
+    const durationFilter = document.getElementById('durationFilter');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const searchInput = document.getElementById('searchInput');
+    const jobsGrid = document.getElementById('jobsGrid');
+    const noResults = document.getElementById('noResults');
+    
+    function filterJobs() {
+        const locationValue = locationFilter.value.toLowerCase();
+        const durationValue = durationFilter.value.toLowerCase();
+        const categoryValue = categoryFilter.value.toLowerCase();
+        const searchValue = searchInput.value.toLowerCase();
+        
+        const jobCards = document.querySelectorAll('.job-card');
+        let visibleCount = 0;
+        
+        jobCards.forEach(card => {
+            const location = card.dataset.location.toLowerCase();
+            const duration = card.dataset.duration.toLowerCase();
+            const category = card.dataset.category.toLowerCase();
+            const title = card.dataset.title;
+            const company = card.dataset.company;
+            const description = card.dataset.description;
+            
+            const locationMatch = !locationValue || location.includes(locationValue);
+            const durationMatch = !durationValue || duration.includes(durationValue);
+            const categoryMatch = !categoryValue || category.includes(categoryValue);
+            const searchMatch = !searchValue || 
+                title.includes(searchValue) || 
+                company.includes(searchValue) || 
+                description.includes(searchValue);
+            
+            if (locationMatch && durationMatch && categoryMatch && searchMatch) {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        // Show/hide no results message
+        if (visibleCount === 0) {
+            jobsGrid.style.display = 'none';
+            noResults.classList.remove('d-none');
+        } else {
+            jobsGrid.style.display = 'flex';
+            noResults.classList.add('d-none');
+        }
+    }
+    
+    // Add event listeners
+    locationFilter.addEventListener('change', filterJobs);
+    durationFilter.addEventListener('change', filterJobs);
+    categoryFilter.addEventListener('change', filterJobs);
+    searchInput.addEventListener('input', filterJobs);
+});
+
+function showJobDetails(jobId) {
+    const job = jobs.find(j => j.id === jobId);
+    if (!job) return;
+    
+    const modal = new bootstrap.Modal(document.getElementById('jobDetailsModal'));
+    
+    document.getElementById('jobDetailsTitle').textContent = job.title + ' at ' + job.company;
+    
+    const body = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6><i class="fas fa-building me-2"></i>Company</h6>
+                <p class="mb-3">${job.company}</p>
+                
+                <h6><i class="fas fa-map-marker-alt me-2"></i>Location</h6>
+                <p class="mb-3">${job.location}</p>
+                
+                <h6><i class="fas fa-clock me-2"></i>Duration</h6>
+                <p class="mb-3">${job.duration}</p>
+            </div>
+            <div class="col-md-6">
+                <h6><i class="fas fa-info-circle me-2"></i>Job ID</h6>
+                <p class="mb-3">#${job.id}</p>
+                
+                <h6><i class="fas fa-calendar me-2"></i>Posted</h6>
+                <p class="mb-3">Recently</p>
+                
+                <h6><i class="fas fa-users me-2"></i>Type</h6>
+                <p class="mb-3">Internship</p>
+            </div>
+        </div>
+        
+        <h6><i class="fas fa-align-left me-2"></i>Description</h6>
+        <p class="mb-3">${job.description}</p>
+        
+        <h6><i class="fas fa-tools me-2"></i>Requirements</h6>
+        <div class="mb-3">
+            ${job.requirements.map(req => `<span class="badge bg-primary me-1 mb-1">${req}</span>`).join('')}
+        </div>
+        
+        <div class="alert alert-info">
+            <i class="fas fa-lightbulb me-2"></i>
+            <strong>Tip:</strong> Upload your resume to get personalized recommendations for this and similar positions!
+        </div>
+    `;
+    
+    document.getElementById('jobDetailsBody').innerHTML = body;
+    modal.show();
+}
+
+function copyJobInfo(jobId) {
+    const job = jobs.find(j => j.id === jobId);
+    if (!job) return;
+    
+    const text = `${job.title} at ${job.company}\n${job.location}\n${job.duration}\n\n${job.description}\n\nRequirements: ${job.requirements.join(', ')}`;
+    
+    navigator.clipboard.writeText(text).then(() => {
+        // Show success message
+        const toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed top-0 end-0 m-3';
+        toast.style.zIndex = '9999';
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">Job information copied to clipboard!</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 3000);
+    });
+}
+
+function clearFilters() {
+    document.getElementById('locationFilter').value = '';
+    document.getElementById('durationFilter').value = '';
+    document.getElementById('categoryFilter').value = '';
+    document.getElementById('searchInput').value = '';
+    
+    // Trigger filter
+    document.getElementById('searchInput').dispatchEvent(new Event('input'));
+}
+</script>
+
+<style>
+.job-card-item {
+    transition: all 0.3s ease;
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.job-card-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+}
+
+#jobsGrid {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.job-card {
+    display: block;
+}
+</style>
+{% endblock %}

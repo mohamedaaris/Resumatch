@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Resume - ResuMatch AI{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-upload me-2"></i>Upload Your Resume
+                    </h3>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                        <div class="mb-4">
+                            <label for="file" class="form-label fw-bold">Select Resume File:</label>
+                            <input type="file" name="file" id="file" class="form-control form-control-lg" 
+                                   accept=".pdf,.docx,.jpg,.jpeg,.png,.bmp,.tiff,.gif" required>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Supported formats: PDF, DOCX, JPG, PNG, BMP, TIFF, GIF (Maximum 16MB)
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-magic me-2"></i>Analyze Resume
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div class="mt-4">
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-lightbulb me-2"></i>How it works:
+                            </h6>
+                            <ol class="mb-0">
+                                <li><strong>Upload:</strong> Select your resume file (PDF, DOCX, or image)</li>
+                                <li><strong>Analyze:</strong> Our AI extracts text and analyzes your skills</li>
+                                <li><strong>Match:</strong> Get personalized internship recommendations</li>
+                                <li><strong>Compare:</strong> View different matching methods (TF-IDF, Sentence-BERT, Combined)</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('file');
+    
+    // File validation
+    fileInput.addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            console.log('File selected:', file.name, file.type, file.size);
+            
+            // Check file size
+            if (file.size > 16 * 1024 * 1024) {
+                alert('File too large. Maximum size is 16MB.');
+                this.value = '';
+                return;
+            }
+            
+            // Check file type
+            const allowedTypes = ['.pdf', '.docx', '.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.gif'];
+            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+            
+            if (!allowedTypes.includes(fileExtension)) {
+                alert('Invalid file type. Please select a PDF, DOCX, or image file.');
+                this.value = '';
+                return;
+            }
+            
+            console.log('File validation passed');
+        }
+    });
+    
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        console.log('Form submission started');
+        
+        if (!fileInput.files || fileInput.files.length === 0) {
+            e.preventDefault();
+            alert('Please select a file to upload.');
+            console.log('No file selected, preventing submission');
+            return false;
+        }
+        
+        const file = fileInput.files[0];
+        console.log('Submitting file:', file.name, file.type, file.size);
+        
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+        submitBtn.disabled = true;
+        
+        console.log('Form submitted successfully');
+    });
+});
+</script>
+{% endblock %}

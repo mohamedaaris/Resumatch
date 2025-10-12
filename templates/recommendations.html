@@ -1,0 +1,455 @@
+{% extends "base.html" %}
+
+{% block title %}Recommendations - ResuMatch AI{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-bullseye me-2"></i>Job Recommendations
+                    </h2>
+                    <p class="text-muted mb-0">Based on your resume: <strong>{{ filename }}</strong></p>
+                </div>
+                <div>
+                    <a href="{{ url_for('upload_file') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-upload me-2"></i>Upload Another Resume
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Method Selection -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Analysis Method</h5>
+                    <div class="btn-group" role="group">
+                        <a href="{{ url_for('recommendations', data=request.args.get('data'), method='enhanced') }}" 
+                           class="btn {{ 'btn-primary' if method == 'enhanced' else 'btn-outline-primary' }}">
+                            <i class="fas fa-star me-2"></i>Enhanced AI
+                        </a>
+                        <a href="{{ url_for('recommendations', data=request.args.get('data'), method='tfidf') }}" 
+                           class="btn {{ 'btn-primary' if method == 'tfidf' else 'btn-outline-primary' }}">
+                            <i class="fas fa-chart-bar me-2"></i>TF-IDF
+                        </a>
+                        <a href="{{ url_for('recommendations', data=request.args.get('data'), method='sbert') }}" 
+                           class="btn {{ 'btn-primary' if method == 'sbert' else 'btn-outline-primary' }}">
+                            <i class="fas fa-robot me-2"></i>Sentence-BERT
+                        </a>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        {% if method == 'enhanced' %}
+                            Advanced AI with location matching, skill gap analysis, and learning suggestions
+                        {% elif method == 'tfidf' %}
+                            Using statistical text analysis for keyword matching
+                        {% elif method == 'sbert' %}
+                            Using semantic understanding for contextual matching
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Resume Analysis Summary -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-user me-2"></i>Resume Analysis Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <div class="h4 text-primary">{{ processed_data.skills|length }}</div>
+                                <div class="text-muted">Skills</div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <div class="h4 text-success">{{ processed_data.locations|length }}</div>
+                                <div class="text-muted">Locations</div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <div class="h4 text-info">{{ processed_data.certifications|length }}</div>
+                                <div class="text-muted">Certifications</div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <div class="h4 text-warning">{{ processed_data.projects|length }}</div>
+                                <div class="text-muted">Projects</div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <div class="h4 text-danger">{{ processed_data.achievements|length }}</div>
+                                <div class="text-muted">Achievements</div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <div class="h4 text-secondary">{{ processed_data.field_of_interest|length }}</div>
+                                <div class="text-muted">Fields</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if processed_data.skills %}
+                    <div class="mt-3">
+                        <h6>Detected Skills:</h6>
+                        {% for skill in processed_data.skills[:10] %}
+                            <span class="skill-tag">{{ skill }}</span>
+                        {% endfor %}
+                        {% if processed_data.skills|length > 10 %}
+                            <span class="text-muted">and {{ processed_data.skills|length - 10 }} more...</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recommendations -->
+    <div class="row">
+        <div class="col-12">
+            <h4 class="mb-3">
+                <i class="fas fa-star me-2"></i>Top {{ recommendations|length }} Recommendations
+            </h4>
+            
+            {% if recommendations %}
+                {% for job in recommendations %}
+                <div class="card job-card mb-4">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h5 class="card-title mb-0">{{ job.title }}</h5>
+                                    <span class="badge bg-primary similarity-badge">
+                                        {{ "%.1f"|format(job.similarity_percentage) }}% Match
+                                    </span>
+                                </div>
+                                <p class="text-muted mb-2">
+                                    <i class="fas fa-building me-1"></i>{{ job.company }}
+                                    <span class="mx-2">•</span>
+                                    <i class="fas fa-map-marker-alt me-1"></i>{{ job.location }}
+                                    <span class="mx-2">•</span>
+                                    <i class="fas fa-clock me-1"></i>{{ job.duration }}
+                                </p>
+                                <p class="card-text">{{ job.description[:200] }}{% if job.description|length > 200 %}...{% endif %}</p>
+                                
+                                {% if method == 'enhanced' and job.skill_analysis %}
+                                <div class="mt-3">
+                                    <h6 class="mb-2">Skill Analysis (including your fields of interest):</h6>
+                                    {% if job.skill_analysis.matched_skills %}
+                                    <div class="mb-2">
+                                        <small class="text-success">✓ Matched Skills:</small>
+                                        {% for skill in job.skill_analysis.matched_skills[:5] %}
+                                            <span class="skill-tag skill-matched">{{ skill }}</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    {% if job.skill_analysis.missing_skills %}
+                                    <div class="mb-2">
+                                        <small class="text-warning">⚠ Missing Skills:</small>
+                                        {% for skill in job.skill_analysis.missing_skills[:5] %}
+                                            <span class="skill-tag skill-missing">{{ skill }}</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    {% if processed_data.fields_of_interest %}
+                                    <div class="mb-2">
+                                        <small class="text-info">🎯 Your Fields of Interest:</small>
+                                        {% for f in processed_data.fields_of_interest %}
+                                            <span class="skill-tag">{{ f }}</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                {% elif job.requirements %}
+                                <div class="mt-3">
+                                    <h6 class="mb-2">Required Skills:</h6>
+                                    {% for req in job.requirements[:8] %}
+                                        <span class="skill-tag">{{ req }}</span>
+                                    {% endfor %}
+                                    {% if job.requirements|length > 8 %}
+                                        <span class="text-muted">and {{ job.requirements|length - 8 }} more...</span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-end">
+                                    <div class="mb-3">
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar bg-primary" 
+                                                 style="width: {{ job.similarity_percentage }}%"></div>
+                                        </div>
+                                        <small class="text-muted">Similarity Score</small>
+                                    </div>
+                                    
+                                    {% if method == 'enhanced' and job.breakdown %}
+                                    <div class="small text-muted mb-2">
+                                        <div>Location: {{ "%.1f"|format(job.breakdown.location_score * 100) }}%</div>
+                                        <div>Skills: {{ "%.1f"|format(job.breakdown.skill_match_score * 100) }}%</div>
+                                        <div>Field: {{ "%.1f"|format(job.breakdown.field_match_score * 100) }}%</div>
+                                    </div>
+                                    {% elif method == 'combined' and job.tfidf_score and job.sbert_score %}
+                                    <div class="small text-muted mb-2">
+                                        <div>TF-IDF: {{ "%.2f"|format(job.tfidf_score * 100) }}%</div>
+                                        <div>Sentence-BERT: {{ "%.2f"|format(job.sbert_score * 100) }}%</div>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-primary btn-sm" onclick="showJobDetails({{ loop.index0 }})">
+                                            <i class="fas fa-eye me-1"></i>View Details
+                                        </button>
+                                        <button class="btn btn-outline-secondary btn-sm" onclick="copyJobInfo({{ loop.index0 }})">
+                                            <i class="fas fa-copy me-1"></i>Copy Info
+                                        </button>
+                                        <button class="btn btn-outline-primary btn-sm" onclick="showAISuggest({{ loop.index0 }})">
+                                            <i class="fas fa-robot me-1"></i>AI Suggest
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    No recommendations found. Please try uploading a different resume or check if the text was extracted correctly.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Job Details Modal -->
+<div class="modal fade" id="jobDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="jobDetailsTitle">Job Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="jobDetailsBody">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="copyJobInfo()">Copy Info</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Suggest Modal -->
+<div class="modal fade" id="aiSuggestModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="aiSuggestTitle">AI Suggestions</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="aiSuggestBody">
+        <div class="alert alert-info">Generating suggestions...</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.skill-matched {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.skill-missing {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.learning-suggestions {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    border-left: 4px solid #007bff;
+}
+
+.learning-item {
+    padding: 8px;
+    background-color: white;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.similarity-badge {
+    font-size: 0.9em;
+    padding: 6px 12px;
+}
+
+.job-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.job-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.progress {
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const recommendations = {{ recommendations|tojson }};
+
+// Expose globally so inline onclick works
+window.showJobDetails = async function(index) {
+  try {
+    const job = recommendations[index] || {};
+    const modal = new bootstrap.Modal(document.getElementById('jobDetailsModal'));
+    document.getElementById('jobDetailsTitle').textContent = `${job.title ?? ''} at ${job.company ?? ''}`;
+    const scoreNum = Number(job.similarity_percentage ?? 0);
+    const scoreText = isNaN(scoreNum) ? '' : `${(Math.round(scoreNum * 10) / 10).toFixed(1)}% Match`;
+
+    let body = `
+      <div class=\"row\">
+        <div class=\"col-md-6\">
+          <h6>Company</h6>
+          <p>${job.company ?? ''}</p>
+          <h6>Location</h6>
+          <p>${job.location ?? ''}</p>
+          <h6>Duration</h6>
+          <p>${job.duration ?? ''}</p>
+        </div>
+        <div class=\"col-md-6\">
+          <h6>Similarity Score</h6>
+          <div class=\"progress mb-2\">
+            <div class=\"progress-bar bg-primary\" style=\"width: ${scoreNum}%\"></div>
+          </div>
+          <p class=\"text-muted\">${scoreText}</p>
+        </div>
+      </div>
+      <h6>Description</h6>
+      <p>${job.description ?? ''}</p>
+      <h6>Requirements</h6>
+      <p>${(job.requirements || []).join(', ')}</p>`;
+
+    document.getElementById('jobDetailsBody').innerHTML = body;
+    modal.show();
+
+    const jobId = job.job_id ?? job.id;
+    if (jobId === undefined || jobId === null) {
+      document.getElementById('modal-suggest').innerHTML = '<div class=\"alert alert-warning mb-0\">Cannot load suggestions: missing job id.</div>';
+      return;
+    }
+    const res = await fetch(`/api/ai_suggest_for_job?job_id=${encodeURIComponent(jobId)}`);
+    const data = await res.json();
+    const panel = document.getElementById('modal-suggest');
+    if (!data.success) {
+      panel.innerHTML = '<div class=\"alert alert-warning mb-0\">No suggestions available.</div>';
+      return;
+    }
+    if (!data.suggestions || data.suggestions.length === 0) {
+      panel.innerHTML = '<div class=\"alert alert-light mb-0\">No missing skills detected for this role.</div>';
+      return;
+    }
+    const html = data.suggestions.map(s => `
+      <div class=\"learning-item mb-2\">
+        <div class=\"fw-bold text-primary\">${s.skill}</div>
+        <div class=\"small text-muted\">${s.message}</div>
+      </div>`).join('');
+    panel.innerHTML = html;
+  } catch (e) {
+    const panel = document.getElementById('modal-suggest');
+    if (panel) panel.innerHTML = '<div class=\"alert alert-danger mb-0\">Error loading suggestions.</div>';
+  }
+}
+
+window.showAISuggest = async function(index) {
+  try {
+    const job = recommendations[index] || {};
+    const modal = new bootstrap.Modal(document.getElementById('aiSuggestModal'));
+    document.getElementById('aiSuggestTitle').textContent = `AI Suggestions — ${job.title ?? ''}`;
+    document.getElementById('aiSuggestBody').innerHTML = '<div class="alert alert-info">Generating suggestions...</div>';
+    modal.show();
+    const jobId = job.job_id ?? job.id;
+    if (jobId === undefined || jobId === null) {
+      document.getElementById('aiSuggestBody').innerHTML = '<div class="alert alert-warning">Cannot load suggestions: missing job id.</div>';
+      return;
+    }
+    const res = await fetch(`/api/ai_suggest_for_job?job_id=${encodeURIComponent(jobId)}`);
+    const data = await res.json();
+    if (!data.success) {
+      document.getElementById('aiSuggestBody').innerHTML = '<div class="alert alert-warning">No suggestions available.</div>';
+      return;
+    }
+    const s = data.suggestions || [];
+    if (s.length === 0) {
+      document.getElementById('aiSuggestBody').innerHTML = '<div class="alert alert-light">No missing skills detected for this role.</div>';
+      return;
+    }
+    const html = s.map(x => `
+      <div class="learning-item mb-2">
+        <div class="fw-bold text-primary">${x.skill}</div>
+        <div class="small text-muted">${x.message}</div>
+      </div>`).join('');
+    document.getElementById('aiSuggestBody').innerHTML = `<div class="learning-suggestions">${html}</div>`;
+  } catch (e) {
+    document.getElementById('aiSuggestBody').innerHTML = '<div class="alert alert-danger">Error loading suggestions.</div>';
+  }
+}
+
+window.copyJobInfo = function(index) {
+  const job = recommendations[index] || {};
+  const reqs = Array.isArray(job.requirements) ? job.requirements : [];
+  const text = `${job.title ?? ''} at ${job.company ?? ''}\n${job.location ?? ''}\n${job.duration ?? ''}\n\n${job.description ?? ''}\n\nRequirements: ${reqs.join(', ')}`;
+  navigator.clipboard.writeText(text).then(() => {
+    const toast = document.createElement('div');
+    toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed top-0 end-0 m-3';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+      <div class=\"d-flex\">
+        <div class=\"toast-body\">Job information copied to clipboard!</div>
+        <button type=\"button\" class=\"btn-close btn-close-white me-2 m-auto\" data-bs-dismiss=\"toast\"></button>
+      </div>`;
+    document.body.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    setTimeout(() => { document.body.removeChild(toast); }, 3000);
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,222 @@
+[
+  {
+    "id": 1,
+    "title": "Software Engineering Intern",
+    "company": "TCS (Tata Consultancy Services)",
+    "description": "Join India's leading IT services company as a software engineering intern. Work on cutting-edge projects using Java, Python, and cloud technologies. Gain experience in enterprise software development and digital transformation projects.",
+    "requirements": ["Java", "Python", "Spring Boot", "Microservices", "Cloud Computing", "SQL", "Git"],
+    "location": "Bangalore, Karnataka",
+    "duration": "6 months",
+    "field": "Software Engineering",
+    "skills_needed": ["Java", "Python", "Spring Boot", "Microservices", "Cloud Computing", "SQL", "Git"]
+  },
+  {
+    "id": 2,
+    "title": "Data Science Intern",
+    "company": "Infosys",
+    "description": "Work with Infosys data science team on machine learning projects, predictive analytics, and big data solutions. Use Python, R, and advanced ML libraries to solve real-world business problems.",
+    "requirements": ["Python", "R", "Machine Learning", "Pandas", "Scikit-learn", "TensorFlow", "SQL", "Statistics"],
+    "location": "Pune, Maharashtra",
+    "duration": "4 months",
+    "field": "Data Science",
+    "skills_needed": ["Python", "R", "Machine Learning", "Pandas", "Scikit-learn", "TensorFlow", "SQL", "Statistics"]
+  },
+  {
+    "id": 3,
+    "title": "Web Development Intern",
+    "company": "Wipro",
+    "description": "Develop modern web applications using React, Node.js, and cloud technologies. Work on responsive design, API development, and full-stack solutions for enterprise clients.",
+    "requirements": ["React", "Node.js", "JavaScript", "HTML", "CSS", "MongoDB", "Express", "Git"],
+    "location": "Hyderabad, Telangana",
+    "duration": "5 months",
+    "field": "Web Development",
+    "skills_needed": ["React", "Node.js", "JavaScript", "HTML", "CSS", "MongoDB", "Express", "Git"]
+  },
+  {
+    "id": 4,
+    "title": "AI/ML Intern",
+    "company": "HCL Technologies",
+    "description": "Work on artificial intelligence and machine learning projects including computer vision, NLP, and deep learning applications. Use TensorFlow, PyTorch, and cloud ML services.",
+    "requirements": ["Python", "TensorFlow", "PyTorch", "Computer Vision", "NLP", "Deep Learning", "AWS", "Docker"],
+    "location": "Chennai, Tamil Nadu",
+    "duration": "6 months",
+    "field": "Artificial Intelligence",
+    "skills_needed": ["Python", "TensorFlow", "PyTorch", "Computer Vision", "NLP", "Deep Learning", "AWS", "Docker"]
+  },
+  {
+    "id": 5,
+    "title": "Cybersecurity Intern",
+    "company": "Tech Mahindra",
+    "description": "Learn cybersecurity fundamentals, ethical hacking, network security, and threat analysis. Work on security assessments, vulnerability testing, and security tool development.",
+    "requirements": ["Network Security", "Ethical Hacking", "Linux", "Python", "Wireshark", "Nmap", "OWASP", "Cryptography"],
+    "location": "Mumbai, Maharashtra",
+    "duration": "4 months",
+    "field": "Cybersecurity",
+    "skills_needed": ["Network Security", "Ethical Hacking", "Linux", "Python", "Wireshark", "Nmap", "OWASP", "Cryptography"]
+  },
+  {
+    "id": 6,
+    "title": "Cloud Computing Intern",
+    "company": "Accenture",
+    "description": "Work with cloud platforms like AWS, Azure, and Google Cloud. Learn cloud architecture, DevOps practices, containerization, and serverless computing.",
+    "requirements": ["AWS", "Azure", "Docker", "Kubernetes", "Terraform", "Python", "Linux", "CI/CD"],
+    "location": "Gurgaon, Haryana",
+    "duration": "5 months",
+    "field": "Cloud Computing",
+    "skills_needed": ["AWS", "Azure", "Docker", "Kubernetes", "Terraform", "Python", "Linux", "CI/CD"]
+  },
+  {
+    "id": 7,
+    "title": "Mobile App Development Intern",
+    "company": "Cognizant",
+    "description": "Develop mobile applications for iOS and Android platforms using React Native, Flutter, and native development. Work on cross-platform solutions and mobile UI/UX design.",
+    "requirements": ["React Native", "Flutter", "Swift", "Kotlin", "JavaScript", "Firebase", "REST APIs", "Git"],
+    "location": "Kolkata, West Bengal",
+    "duration": "4 months",
+    "field": "Mobile Development",
+    "skills_needed": ["React Native", "Flutter", "Swift", "Kotlin", "JavaScript", "Firebase", "REST APIs", "Git"]
+  },
+  {
+    "id": 8,
+    "title": "DevOps Intern",
+    "company": "Capgemini",
+    "description": "Learn DevOps practices including CI/CD, infrastructure as code, monitoring, and automation. Work with Jenkins, GitLab, Docker, and cloud deployment strategies.",
+    "requirements": ["Docker", "Kubernetes", "Jenkins", "GitLab", "AWS", "Terraform", "Python", "Linux"],
+    "location": "Delhi, NCR",
+    "duration": "6 months",
+    "field": "DevOps",
+    "skills_needed": ["Docker", "Kubernetes", "Jenkins", "GitLab", "AWS", "Terraform", "Python", "Linux"]
+  },
+  {
+    "id": 9,
+    "title": "Data Analytics Intern",
+    "company": "Deloitte",
+    "description": "Work on data analytics projects using SQL, Python, and business intelligence tools. Learn data visualization, statistical analysis, and business reporting.",
+    "requirements": ["SQL", "Python", "Tableau", "Power BI", "Excel", "Statistics", "Data Visualization", "Business Intelligence"],
+    "location": "Ahmedabad, Gujarat",
+    "duration": "4 months",
+    "field": "Data Analytics",
+    "skills_needed": ["SQL", "Python", "Tableau", "Power BI", "Excel", "Statistics", "Data Visualization", "Business Intelligence"]
+  },
+  {
+    "id": 10,
+    "title": "Blockchain Intern",
+    "company": "IBM India",
+    "description": "Learn blockchain technology, smart contracts, and decentralized applications. Work on Ethereum, Hyperledger, and blockchain security implementations.",
+    "requirements": ["Solidity", "JavaScript", "Web3.js", "Ethereum", "Hyperledger", "Node.js", "Cryptography", "Smart Contracts"],
+    "location": "Bangalore, Karnataka",
+    "duration": "5 months",
+    "field": "Blockchain",
+    "skills_needed": ["Solidity", "JavaScript", "Web3.js", "Ethereum", "Hyperledger", "Node.js", "Cryptography", "Smart Contracts"]
+  },
+  {
+    "id": 11,
+    "title": "UI/UX Design Intern",
+    "company": "Zomato",
+    "description": "Design user interfaces and user experiences for web and mobile applications. Work with Figma, Adobe Creative Suite, and design systems.",
+    "requirements": ["Figma", "Adobe XD", "Sketch", "Photoshop", "Illustrator", "HTML", "CSS", "User Research"],
+    "location": "Gurgaon, Haryana",
+    "duration": "3 months",
+    "field": "UI/UX Design",
+    "skills_needed": ["Figma", "Adobe XD", "Sketch", "Photoshop", "Illustrator", "HTML", "CSS", "User Research"]
+  },
+  {
+    "id": 12,
+    "title": "Digital Marketing Intern",
+    "company": "Swiggy",
+    "description": "Learn digital marketing strategies, SEO, social media marketing, and content creation. Work on campaigns, analytics, and growth marketing initiatives.",
+    "requirements": ["SEO", "Google Analytics", "Social Media Marketing", "Content Creation", "Email Marketing", "PPC", "WordPress", "Canva"],
+    "location": "Bangalore, Karnataka",
+    "duration": "3 months",
+    "field": "Digital Marketing",
+    "skills_needed": ["SEO", "Google Analytics", "Social Media Marketing", "Content Creation", "Email Marketing", "PPC", "WordPress", "Canva"]
+  },
+  {
+    "id": 13,
+    "title": "IoT Intern",
+    "company": "L&T Technology Services",
+    "description": "Work on Internet of Things projects including sensor networks, embedded systems, and IoT platforms. Learn Arduino, Raspberry Pi, and IoT protocols.",
+    "requirements": ["Arduino", "Raspberry Pi", "C/C++", "Python", "IoT Protocols", "MQTT", "Cloud Computing", "Embedded Systems"],
+    "location": "Mumbai, Maharashtra",
+    "duration": "5 months",
+    "field": "Internet of Things",
+    "skills_needed": ["Arduino", "Raspberry Pi", "C/C++", "Python", "IoT Protocols", "MQTT", "Cloud Computing", "Embedded Systems"]
+  },
+  {
+    "id": 14,
+    "title": "Game Development Intern",
+    "company": "Nazara Technologies",
+    "description": "Develop mobile and web games using Unity, Unreal Engine, and game development frameworks. Work on game mechanics, graphics, and user experience.",
+    "requirements": ["Unity", "C#", "Unreal Engine", "Game Design", "3D Modeling", "Animation", "JavaScript", "HTML5"],
+    "location": "Mumbai, Maharashtra",
+    "duration": "4 months",
+    "field": "Game Development",
+    "skills_needed": ["Unity", "C#", "Unreal Engine", "Game Design", "3D Modeling", "Animation", "JavaScript", "HTML5"]
+  },
+  {
+    "id": 15,
+    "title": "AR/VR Intern",
+    "company": "Tech Mahindra",
+    "description": "Work on Augmented Reality and Virtual Reality applications using Unity, ARCore, ARKit, and VR development tools. Create immersive experiences and 3D applications.",
+    "requirements": ["Unity", "ARCore", "ARKit", "C#", "3D Modeling", "Blender", "VR Development", "OpenGL"],
+    "location": "Pune, Maharashtra",
+    "duration": "5 months",
+    "field": "AR/VR",
+    "skills_needed": ["Unity", "ARCore", "ARKit", "C#", "3D Modeling", "Blender", "VR Development", "OpenGL"]
+  },
+  {
+    "id": 16,
+    "title": "Fintech Intern",
+    "company": "Paytm",
+    "description": "Work on financial technology solutions including payment systems, digital banking, and fintech applications. Learn about financial regulations and fintech innovations.",
+    "requirements": ["Python", "Java", "Blockchain", "API Development", "Financial Systems", "Database Design", "Security", "Regulatory Compliance"],
+    "location": "Noida, Uttar Pradesh",
+    "duration": "6 months",
+    "field": "Fintech",
+    "skills_needed": ["Python", "Java", "Blockchain", "API Development", "Financial Systems", "Database Design", "Security", "Regulatory Compliance"]
+  },
+  {
+    "id": 17,
+    "title": "E-commerce Intern",
+    "company": "Flipkart",
+    "description": "Work on e-commerce platforms, online marketplaces, and digital commerce solutions. Learn about e-commerce architecture, payment processing, and customer experience.",
+    "requirements": ["Java", "Spring Boot", "Microservices", "React", "MySQL", "Redis", "Elasticsearch", "AWS"],
+    "location": "Bangalore, Karnataka",
+    "duration": "5 months",
+    "field": "E-commerce",
+    "skills_needed": ["Java", "Spring Boot", "Microservices", "React", "MySQL", "Redis", "Elasticsearch", "AWS"]
+  },
+  {
+    "id": 18,
+    "title": "Healthcare Tech Intern",
+    "company": "Practo",
+    "description": "Work on healthcare technology solutions including telemedicine, health records, and medical applications. Learn about healthcare regulations and medical software development.",
+    "requirements": ["Python", "Django", "React", "PostgreSQL", "Healthcare APIs", "HIPAA Compliance", "Medical Software", "Data Privacy"],
+    "location": "Bangalore, Karnataka",
+    "duration": "4 months",
+    "field": "Healthcare Technology",
+    "skills_needed": ["Python", "Django", "React", "PostgreSQL", "Healthcare APIs", "HIPAA Compliance", "Medical Software", "Data Privacy"]
+  },
+  {
+    "id": 19,
+    "title": "EdTech Intern",
+    "company": "Byju's",
+    "description": "Work on educational technology platforms, learning management systems, and educational content delivery. Learn about online education and learning analytics.",
+    "requirements": ["React", "Node.js", "MongoDB", "Video Streaming", "Learning Analytics", "Content Management", "JavaScript", "AWS"],
+    "location": "Bangalore, Karnataka",
+    "duration": "4 months",
+    "field": "Educational Technology",
+    "skills_needed": ["React", "Node.js", "MongoDB", "Video Streaming", "Learning Analytics", "Content Management", "JavaScript", "AWS"]
+  },
+  {
+    "id": 20,
+    "title": "AgriTech Intern",
+    "company": "Ninjacart",
+    "description": "Work on agricultural technology solutions including farm management, supply chain, and agricultural data analytics. Learn about precision agriculture and IoT in farming.",
+    "requirements": ["Python", "IoT", "Data Analytics", "Machine Learning", "Mobile Development", "Database Design", "API Development", "Agricultural Systems"],
+    "location": "Bangalore, Karnataka",
+    "duration": "5 months",
+    "field": "Agricultural Technology",
+    "skills_needed": ["Python", "IoT", "Data Analytics", "Machine Learning", "Mobile Development", "Database Design", "API Development", "Agricultural Systems"]
+  }
+]

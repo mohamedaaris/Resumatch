@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResuMatch AI - Upload Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>ResuMatch AI - Upload Test Page</h1>
+    
+    <div class="test-section">
+        <h2>File Upload Test</h2>
+        <form id="testForm" enctype="multipart/form-data">
+            <input type="file" name="file" id="testFile" accept=".pdf,.docx,.jpg,.jpeg,.png,.bmp,.tiff,.gif">
+            <button type="submit">Test Upload</button>
+        </form>
+        <div id="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>JavaScript Console</h2>
+        <p>Open your browser's developer tools (F12) and check the Console tab for any errors.</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Instructions</h2>
+        <ol>
+            <li>Select a PDF, DOCX, or image file</li>
+            <li>Click "Test Upload"</li>
+            <li>Check the result below</li>
+            <li>If there are errors, check the browser console</li>
+        </ol>
+    </div>
+
+    <script>
+        document.getElementById('testForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('testFile');
+            const resultDiv = document.getElementById('result');
+            
+            console.log('Form submitted');
+            console.log('File input:', fileInput);
+            console.log('Files:', fileInput.files);
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                resultDiv.innerHTML = '<p class="error">❌ No file selected</p>';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            console.log('Selected file:', file);
+            
+            resultDiv.innerHTML = `
+                <p class="success">✓ File selected successfully</p>
+                <p class="info">Name: ${file.name}</p>
+                <p class="info">Type: ${file.type}</p>
+                <p class="info">Size: ${(file.size / 1024 / 1024).toFixed(2)} MB</p>
+            `;
+        });
+        
+        // Test file input change
+        document.getElementById('testFile').addEventListener('change', function(e) {
+            console.log('File input changed:', e.target.files);
+        });
+    </script>
+</body>
+</html>

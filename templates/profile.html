@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - ResuMatch AI{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-user-circle me-2"></i>Professional Profile
+                    </h2>
+                    <p class="text-muted mb-0">Generated from: <strong>{{ filename }}</strong></p>
+                </div>
+                <div>
+                    <a href="{{ url_for('upload_file') }}" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-upload me-2"></i>Upload Another Resume
+                    </a>
+                    <button class="btn btn-primary" onclick="generateRecommendations()">
+                        <i class="fas fa-magic me-2"></i>Get AI Recommendations
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Profile Overview -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card profile-card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h4 class="profile-name">{{ processed_data.entities.PERSON[0] if processed_data.entities.PERSON else 'Professional' }}</h4>
+                            <p class="profile-title text-muted mb-3">
+                                {% if processed_data.experience_details.positions %}
+                                    {{ processed_data.experience_details.positions[0] }}
+                                {% else %}
+                                    Software Professional
+                                {% endif %}
+                            </p>
+                            
+                            <!-- Contact Information -->
+                            <div class="contact-info mb-3">
+                                {% if processed_data.locations %}
+                                <div class="contact-item">
+                                    <i class="fas fa-map-marker-alt text-primary me-2"></i>
+                                    <span>{{ processed_data.locations[0] }}</span>
+                                </div>
+                                {% endif %}
+                                {% if processed_data.entities.ORG %}
+                                <div class="contact-item">
+                                    <i class="fas fa-building text-primary me-2"></i>
+                                    <span>{{ processed_data.experience_details.companies[0] if processed_data.experience_details.companies else 'Available for opportunities' }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="profile-stats">
+                                <div class="stat-item">
+                                    <div class="stat-number text-primary">{{ processed_data.skills|length }}</div>
+                                    <div class="stat-label">Technical Skills</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-number text-success">{{ processed_data.experience_details.companies|length }}</div>
+                                    <div class="stat-label">Companies</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-number text-info">{{ processed_data.projects|length }}</div>
+                                    <div class="stat-label">Projects</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Skills Section -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-code me-2"></i>Technical Skills
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if processed_data.skills %}
+                        {% for skill in processed_data.skills %}
+                            <span class="skill-tag">{{ skill }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No technical skills detected</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-certificate me-2"></i>Certifications
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if processed_data.certifications %}
+                        {% for cert in processed_data.certifications %}
+                            <div class="certification-item">
+                                <i class="fas fa-award text-warning me-2"></i>
+                                <span>{{ cert }}</span>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No certifications detected</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Experience & Projects -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-briefcase me-2"></i>Work Experience
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if processed_data.experience_details.companies %}
+                        {% for company in processed_data.experience_details.companies[:3] %}
+                        <div class="experience-item mb-3">
+                            <div class="company-name fw-bold">{{ company }}</div>
+                            {% if loop.index <= processed_data.experience_details.positions|length %}
+                            <div class="position text-muted">{{ processed_data.experience_details.positions[loop.index0] }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No work experience detected</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-project-diagram me-2"></i>Projects
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if processed_data.projects %}
+                        {% for project in processed_data.projects[:3] %}
+                        <div class="project-item mb-2">
+                            <i class="fas fa-folder text-info me-2"></i>
+                            <span>{{ project }}</span>
+                        </div>
+                        {% endfor %}
+                        {% if processed_data.projects|length > 3 %}
+                        <div class="text-muted">and {{ processed_data.projects|length - 3 }} more projects...</div>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-muted">No projects detected</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Achievements & Interests -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-trophy me-2"></i>Achievements
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if processed_data.achievements %}
+                        {% for achievement in processed_data.achievements[:3] %}
+                        <div class="achievement-item mb-2">
+                            <i class="fas fa-star text-warning me-2"></i>
+                            <span>{{ achievement }}</span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No achievements detected</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-heart me-2"></i>Fields of Interest
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if processed_data.field_of_interest %}
+                        {% for field in processed_data.field_of_interest %}
+                        <span class="interest-tag">{{ field }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No specific fields detected</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- AI Recommendations Section -->
+    <div class="row" id="recommendationsSection" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-robot me-2"></i>AI-Powered Job Recommendations
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Analyzing your profile and finding the best matches...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.profile-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+}
+
+.profile-name {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.profile-title {
+    font-size: 1.2rem;
+    opacity: 0.9;
+}
+
+.contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+}
+
+.profile-stats {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 1rem;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.skill-tag {
+    display: inline-block;
+    background-color: #e3f2fd;
+    color: #1976d2;
+    padding: 0.25rem 0.75rem;
+    margin: 0.25rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    border: 1px solid #bbdefb;
+}
+
+.certification-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.certification-item:last-child {
+    border-bottom: none;
+}
+
+.experience-item {
+    padding: 0.75rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+}
+
+.company-name {
+    color: #007bff;
+    font-size: 1.1rem;
+}
+
+.position {
+    font-size: 0.9rem;
+}
+
+.project-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0;
+}
+
+.achievement-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0;
+}
+
+.interest-tag {
+    display: inline-block;
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+    padding: 0.25rem 0.75rem;
+    margin: 0.25rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    border: 1px solid #e1bee7;
+}
+
+.card {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border: none;
+    margin-bottom: 1rem;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.card-title {
+    color: #495057;
+    font-weight: 600;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function generateRecommendations() {
+    // Show recommendations section
+    document.getElementById('recommendationsSection').style.display = 'block';
+    
+    // Scroll to recommendations
+    document.getElementById('recommendationsSection').scrollIntoView({ behavior: 'smooth' });
+    
+    // Simulate AI processing
+    setTimeout(() => {
+    // Redirect to recommendations page with enhanced method
+    const data = {{ session_data|tojson }};
+    const url = "{{ url_for('recommendations') }}";
+    window.location.href = url + "?data=" + encodeURIComponent(JSON.stringify(data)) + "&method=enhanced";
+    }, 2000);
+}
+
+// Auto-generate recommendations after 3 seconds
+setTimeout(() => {
+    if (confirm("Would you like to see AI-powered job recommendations based on your profile?")) {
+        generateRecommendations();
+    }
+}, 3000);
+</script>
+{% endblock %}
