@@ -349,8 +349,14 @@ def extract_text_with_hints_from_bytes(file_bytes: bytes, file_type: str) -> dic
                     hints['bold_lines'].append(pt)
                     if current_section:
                         sections_map[current_section]['bold_lines'].append(pt)
-                        # Use short bold lines as subheadings
-                        if 2 <= len(pt) <= 100:
+                        # Use only heading-like bold lines as subheadings (short, title-like, not verb-led)
+                        import re as _re
+                        verbs = {'focused','designed','developed','built','created','implemented','optimized','tested','managed','led','engineered','crafted','delivered','improved','enhanced','maintained'}
+                        toks = _re.findall(r'[A-Za-z][A-Za-z0-9&\-]+', pt)
+                        looks_title = (2 <= len(toks) <= 12) and (not _re.search(r'[.!?]$', pt))
+                        starts_with_verb = toks and toks[0].lower() in verbs
+                        has_title_case = any((w[:1].isupper() and len(w) > 2) for w in toks[:4])
+                        if looks_title and not starts_with_verb and has_title_case:
                             sections_map[current_section]['subheadings'].append(pt)
             # Education candidates (quick scan)
             for p in doc.paragraphs:
@@ -405,7 +411,14 @@ def extract_text_with_hints_from_bytes(file_bytes: bytes, file_type: str) -> dic
                                 current['lines'].append(line_text)
                                 if has_bold or (is_caps and max_size >= (size_threshold * 0.9)):
                                     current['bold_lines'].append(line_text)
-                                    if 2 <= len(line_text) <= 100:
+                                    # Only keep heading-like subheadings
+                                    import re as _re
+                                    verbs = {'focused','designed','developed','built','created','implemented','optimized','tested','managed','led','engineered','crafted','delivered','improved','enhanced','maintained'}
+                                    toks = _re.findall(r'[A-Za-z][A-Za-z0-9&\-]+', line_text)
+                                    looks_title = (2 <= len(toks) <= 12) and (not _re.search(r'[.!?]$', line_text))
+                                    starts_with_verb = toks and toks[0].lower() in verbs
+                                    has_title_case = any((w[:1].isupper() and len(w) > 2) for w in toks[:4])
+                                    if looks_title and not starts_with_verb and has_title_case:
                                         current['subheadings'].append(line_text)
             add_current()
             hints['sections'] = sections

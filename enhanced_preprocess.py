@@ -743,6 +743,47 @@ class EnhancedTextPreprocessor:
             logger.warning(f"Skills section extraction failed: {e}")
             return []
 
+    def _extract_achievements_from_section(self, lines: List[str]) -> List[str]:
+        """Extract achievement bullet lines from Achievements section using simple heuristics, splitting compound lines into multiple items."""
+        items: List[str] = []
+        try:
+            import re
+            pat = re.compile(r"((?:Winner|Finalist|\d{1,2}(?:st|nd|rd|th)\s+Runner(?:-?Up)?)\s+[\-–—]\s+.+?\(\d{4}\))")
+            def split_items(ln: str) -> List[str]:
+                s = (ln or '').strip()
+                if not s:
+                    return []
+                s = s.lstrip('•-* ').strip()
+                found = [m.group(1).strip() for m in pat.finditer(s)]
+                if not found:
+                    # fallback if contains a year
+                    if re.search(r'\b(20\d{2}|19\d{2})\b', s):
+                        return [s]
+                    return []
+                # de-dup preserve order
+                seen = set()
+                out = []
+                for f in found:
+                    low = f.lower()
+                    if low not in seen:
+                        out.append(f)
+                        seen.add(low)
+                return out
+            for ln in lines:
+                items.extend(split_items(ln))
+            # de-dup across lines while preserving order
+            seen = set()
+            uniq = []
+            for s in items:
+                low = s.lower()
+                if low not in seen:
+                    uniq.append(s)
+                    seen.add(low)
+            return uniq
+        except Exception as e:
+            logger.warning(f"Achievements section extraction failed: {e}")
+            return items
+
     def preprocess_resume(self, text: str) -> Dict[str, any]:
         """
         Complete preprocessing pipeline for resume text with enhanced extraction
@@ -766,6 +807,7 @@ class EnhancedTextPreprocessor:
             projects_sec = self._extract_projects_from_section(sections.get('projects', []))
             certs_sec = self._extract_certifications_from_section(sections.get('certifications', []))
             education_sec = self._extract_education_from_section(sections.get('education', []))
+            achievements_sec = self._extract_achievements_from_section(sections.get('achievements', []))
 
             # Global fallback extraction to augment missing items
             locations = self.extract_locations(cleaned_text)
@@ -773,13 +815,14 @@ class EnhancedTextPreprocessor:
             certifications_global = self.extract_certifications(cleaned_text)
             experience_details = self.extract_experience_details(cleaned_text)
             projects_global = self.extract_projects(cleaned_text)
-            achievements = self.extract_achievements(cleaned_text)
+            achievements_global = self.extract_achievements(cleaned_text)
             field_of_interest = self.extract_field_of_interest(cleaned_text)
 
             # Merge section-aware with global (section results take precedence)
             skills = sorted(list(set((skills_sec or []) + (skills_global or []))))
             projects = projects_sec if projects_sec else projects_global
             certifications = certs_sec if certs_sec else certifications_global
+            achievements = achievements_sec if achievements_sec else achievements_global
 
             # Extract entities using spaCy
             entities = self.extract_entities(cleaned_text)

@@ -99,14 +99,28 @@ def enrich_processed_data(processed_data: Dict[str, Any], raw_text: str, hints: 
     """Enrich and normalize processed data for profile rendering.
     - Populate top-level fields (name, email, phone, location)
     - Detect LinkedIn/GitHub/portfolio URLs from text
-    - Normalize experience, projects, certifications shapes
-    - Augment achievements and project descriptions with keyword hints
+    - Prefer structural hints (bold subheadings under ALL-CAPS headings) for Projects/Achievements/Experience
+    - Respect user-locked sections so manual edits are preserved
     """
     if not isinstance(processed_data, dict):
         processed_data = {}
 
-    # Prefer first heading as name if it looks like a personal name
-    if hints and isinstance(hints, dict) and not processed_data.get('name'):
+    # Determine locked sections (set by /api/profile when the user saves edits)
+    locks = set()
+    try:
+        ls = processed_data.get('locked_sections')
+        if isinstance(ls, list):
+            locks = {str(x).lower() for x in ls}
+    except Exception:
+        locks = set()
+
+    # Helper to set a field only when not locked
+    def set_if_unlocked(key: str, value):
+        if key.lower() not in locks and value is not None:
+            processed_data[key] = value
+
+    # Prefer first heading as name if it looks like a personal name (only if name isn't locked)
+    if ('name' not in processed_data or not processed_data.get('name')) and ('name' not in locks) and hints and isinstance(hints, dict):
         skip_headings = {"EDUCATION","SKILLS","PROJECT","PROJECTS","CERTIFICATION","CERTIFICATIONS","ACHIEVEMENTS","SIMULATION","SUMMARY","OBJECTIVE","PROFILE","EXPERIENCE","PROFESSIONAL EXPERIENCE"}
         heads = hints.get('headings') or []
         for h in heads:
@@ -118,10 +132,10 @@ def enrich_processed_data(processed_data: Dict[str, Any], raw_text: str, hints: 
             # Accept short headings 2-5 tokens, mostly letters and spaces
             words = [w for w in ht.split() if w.isalpha() or (len(w)==1 and w.isalpha())]
             if 1 < len(words) <= 5 and all(len(w) <= 20 for w in words):
-                processed_data['name'] = ' '.join(w.capitalize() for w in words)
+                set_if_unlocked('name', ' '.join(w.capitalize() for w in words))
                 break
 
-    # 1) Basic contact extraction from raw text
+    # 1) Basic contact extraction from raw text (only fill when missing or not locked)
     email_pattern = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"
     phone_pattern = r"(\+?\d[\d\-\s]{7,}\d)"
     url_pattern = r"(https?://[^\s]+|www\.[^\s]+)"
@@ -162,13 +176,13 @@ def enrich_processed_data(processed_data: Dict[str, Any], raw_text: str, hints: 
             portfolio_url = u_norm
 
     # 3) Location fallback from list if top-level missing
-    if not processed_data.get('location'):
+    if (not processed_data.get('location')) and ('location' not in locks):
         locs = processed_data.get('locations') or []
         if isinstance(locs, list) and locs:
             processed_data['location'] = locs[0]
 
     # 4) Name fallback using entities/person or first line of text
-    if not processed_data.get('name'):
+    if (not processed_data.get('name')) and ('name' not in locks):
         name = None
         ents = processed_data.get('entities') or {}
         if isinstance(ents, dict):
@@ -188,16 +202,207 @@ def enrich_processed_data(processed_data: Dict[str, Any], raw_text: str, hints: 
             processed_data['name'] = name
 
     # 5) Email/phone top-level
-    if not processed_data.get('email') and emails:
+    if (not processed_data.get('email')) and emails and ('email' not in locks):
         processed_data['email'] = emails[0]
-    if not processed_data.get('phone') and phones:
+    if (not processed_data.get('phone')) and phones and ('phone' not in locks):
         processed_data['phone'] = phones[0]
 
     # 6) Socials top-level
-    if linkedin_url and not processed_data.get('linkedin'):
+    if linkedin_url and not processed_data.get('linkedin') and ('linkedin' not in locks):
         processed_data['linkedin'] = linkedin_url
-    if github_url and not processed_data.get('github'):
+    if github_url and not processed_data.get('github') and ('github' not in locks):
         processed_data['github'] = github_url
+    if portfolio_url and not processed_data.get('portfolio') and ('portfolio' not in locks):
+        processed_data['portfolio'] = portfolio_url
+
+    # 7) Use structural hints (if available) to keep only bold subheadings under ALL-CAPS headings
+    try:
+        sections = []
+        if isinstance(hints, dict):
+            sections = hints.get('sections') or []
+        # Build a quick lookup from normalized section name to subheadings and lines
+        sec_map = {}
+        sec_lines = {}
+        for sec in sections:
+            name = (sec.get('name') or '').strip().upper()
+            subs = [s.strip() for s in (sec.get('subheadings') or []) if isinstance(s, str)]
+            lines = [s.strip() for s in (sec.get('lines') or []) if isinstance(s, str)]
+            # Deduplicate while preserving order
+            seen = set()
+            norm_subs = []
+            for s in subs:
+                if s and s.lower() not in seen and 2 <= len(s) <= 100:
+                    norm_subs.append(s)
+                    seen.add(s.lower())
+            if name:
+                sec_map[name] = norm_subs
+                sec_lines[name] = lines
+        def pick_subs(names: List[str]) -> List[str]:
+            out = []
+            for n in names:
+                out.extend(sec_map.get(n, []))
+            # de-dup preserve order
+            seen = set()
+            uniq = []
+            for s in out:
+                low = s.lower()
+                if low not in seen:
+                    uniq.append(s)
+                    seen.add(low)
+            return uniq
+        def pick_lines(names: List[str]) -> List[str]:
+            out = []
+            for n in names:
+                out.extend(sec_lines.get(n, []))
+            # normalize and de-dup
+            seen = set()
+            uniq = []
+            for s in out:
+                s2 = s.strip()
+                if not s2:
+                    continue
+                low = s2.lower()
+                if low not in seen:
+                    uniq.append(s2)
+                    seen.add(low)
+            return uniq
+        def looks_like_project_title(s: str) -> bool:
+            import re
+            verbs = {'focused','designed','developed','built','created','implemented','optimized','tested','managed','led','engineered','crafted','delivered','improved','enhanced','maintained'}
+            toks = re.findall(r'[A-Za-z][A-Za-z0-9\-]+', s)
+            if not (2 <= len(toks) <= 12):
+                return False
+            if re.search(r'[.!?]$', s):
+                return False
+            if toks and toks[0].lower() in verbs:
+                return False
+            # Require at least one Title Case token or a dash/en-dash/em-dash separated role pattern
+            if any((w[:1].isupper() and len(w) > 2) for w in toks[:5]):
+                return True
+            if any(ch in s for ch in ['-','–','—']):
+                return True
+            return False
+        def split_achievements_from_line(s: str) -> list:
+            """Split a single line into multiple achievement items like
+            "1st Runner-Up – Web Designing Competition, The New College (2025) 1st Runner-Up – Coding Challenge (Python), MCC College (2025)"
+            """
+            import re
+            s = (s or '').strip()
+            if not s:
+                return []
+            # Remove leading bullet
+            s = s.lstrip('•-* ').strip()
+            # Pattern matches sequences starting with a rank/award followed by dash and ending at a (YYYY)
+            pat = re.compile(r"((?:Winner|Finalist|\d{1,2}(?:st|nd|rd|th)\s+Runner(?:-?Up)?)\s+[\-–—]\s+.+?\(\d{4}\))")
+            items = [m.group(1).strip() for m in pat.finditer(s)]
+            # If nothing matched but it still looks like an achievement, keep whole line
+            if not items:
+                if re.search(r'\b(20\d{2}|19\d{2})\b', s):
+                    items = [s]
+            # de-dup preserve order
+            seen = set()
+            out = []
+            for it in items:
+                low = it.lower()
+                if low not in seen:
+                    out.append(it)
+                    seen.add(low)
+            return out
+
+        # Projects
+        if 'projects' not in locks:
+            proj_subs = [s for s in pick_subs(['PROJECTS', 'PROJECT', 'PROJECT WORK', 'ACADEMIC PROJECTS']) if looks_like_project_title(s)]
+            if proj_subs:
+                processed_data['projects'] = [{'name': s, 'description': '', 'technologies': []} for s in proj_subs]
+
+        # Achievements: prefer explicit lines under the Achievements section
+        if 'achievements' not in locks:
+            ach_lines = pick_lines(['ACHIEVEMENTS', 'AWARDS', 'HONORS'])
+            ach_items = []
+            for ln in ach_lines:
+                ach_items.extend(split_achievements_from_line(ln))
+            if ach_items:
+                processed_data['achievements'] = ach_items
+            else:
+                # fallback to subheadings if any
+                ach_subs = pick_subs(['ACHIEVEMENTS', 'AWARDS', 'HONORS'])
+                if ach_subs:
+                    processed_data['achievements'] = ach_subs
+
+        # Experience (store subheadings as positions)
+        if 'experience' not in locks:
+            exp_subs = pick_subs(['EXPERIENCE', 'WORK EXPERIENCE', 'PROFESSIONAL EXPERIENCE'])
+            if exp_subs:
+                processed_data['experience'] = [{'company': '', 'position': s, 'dates': '', 'description': ''} for s in exp_subs]
+    except Exception:
+        pass
+
+    # 8) Opportunistic skills enrichment (do not override if locked)
+    try:
+        if 'skills' not in locks:
+            skills = processed_data.get('skills') or []
+            if not isinstance(skills, list):
+                skills = []
+            skills_set = {str(s).lower().strip() for s in skills if isinstance(s, str)}
+            presence = (raw_text or '').lower()
+            add_if_present = {
+                'python': ['python'],
+                'java': ['java'],
+                'php': ['php'],
+                'javascript': ['javascript', 'js'],
+                'html': ['html'],
+                'css': ['css'],
+                'mysql': ['mysql'],
+                'pl/sql': ['pl sql', 'pl/sql', 'plsql'],
+                'oracle': ['oracle'],
+                'figma': ['figma'],
+                'visual studio': ['visual studio', 'vs code', 'vscode']
+            }
+            for canon, needles in add_if_present.items():
+                if canon not in skills_set and any(n in presence for n in needles):
+                    skills.append(canon)
+                    skills_set.add(canon)
+            drop = {'git','github','tech'}
+            skills = [s for s in skills if isinstance(s, str) and s.lower() not in drop]
+            skills = sorted(list(dict.fromkeys(skills)))[:35]
+            processed_data['skills'] = skills
+    except Exception:
+        pass
+
+    # 9) Opportunistic name fix around phone/location tokens (respect lock)
+    try:
+        if 'name' not in locks:
+            source_text = raw_text or ''
+            low_text = source_text.lower()
+            mphone = re.search(r"(\+?\d[\d\-\s]{7,}\d)", source_text)
+            if mphone:
+                if not processed_data.get('name'):
+                    start = max(0, mphone.start()-120)
+                    prev = source_text[start:mphone.start()].strip().splitlines()
+                    if prev:
+                        cand = prev[-1].strip()
+                        cand_clean = re.sub(r"[^A-Za-z\s]", " ", cand)
+                        tokens = [p for p in cand_clean.split() if p]
+                        parts = tokens[:4]
+                        if len(parts) >= 2:
+                            processed_data['name'] = ' '.join(w.capitalize() for w in parts)
+                if not processed_data.get('location') or processed_data.get('location','').lower() == 'chennai':
+                    post = source_text[mphone.end():mphone.end()+100]
+                    post_tokens = re.findall(r"[A-Za-z]+", post)
+                    post_lower = [t.lower() for t in post_tokens]
+                    if 'chennai' in post_lower:
+                        idx = post_lower.index('chennai')
+                        prev_tok = post_tokens[idx-1] if idx-1 >= 0 else None
+                        if prev_tok and len(prev_tok) > 2:
+                            processed_data['location'] = f"{prev_tok.capitalize()}, Chennai"
+                        else:
+                            processed_data['location'] = 'Chennai'
+            if 'chennai' in low_text and not (processed_data.get('location')):
+                processed_data['location'] = 'Chennai'
+    except Exception:
+        pass
+
+    return processed_data
     if portfolio_url and not processed_data.get('portfolio'):
         processed_data['portfolio'] = portfolio_url
 
@@ -1088,7 +1293,12 @@ def jobs_page():
                 'description': job['description'],
                 'requirements': job['requirements'],
                 'location': job['location'],
-                'duration': job['duration']
+                'duration': job['duration'],
+                'field': job.get('field',''),
+                'experience_level': job.get('experience_level'),
+                'min_experience_years': job.get('min_experience_years'),
+                'min_internships': job.get('min_internships'),
+                'min_programs': job.get('min_programs')
             })
         
         # Build unique normalized location list from jobs
@@ -1123,7 +1333,12 @@ def api_jobs():
                 'description': job['description'],
                 'requirements': job['requirements'],
                 'location': job['location'],
-                'duration': job['duration']
+                'duration': job['duration'],
+                'field': job.get('field',''),
+                'experience_level': job.get('experience_level'),
+                'min_experience_years': job.get('min_experience_years'),
+                'min_internships': job.get('min_internships'),
+                'min_programs': job.get('min_programs')
             })
         
         return jsonify({'jobs': jobs})
@@ -1163,8 +1378,17 @@ def api_profile():
             # Merge processed_data updates if provided
             if 'processed_data' in payload and isinstance(payload['processed_data'], dict):
                 pd = profile.get('processed_data', {})
+                # Track which sections were manually edited (lock them against re-derivation)
+                edited_keys = set(payload['processed_data'].keys())
+                locked_candidates = {'projects','achievements','experience','skills','name','email','phone','location','linkedin','portfolio'}
+                locks = set([k.lower() for k in pd.get('locked_sections', []) if isinstance(k, str)])
+                locks |= {k for k in edited_keys if k in locked_candidates}
                 pd.update(payload['processed_data'])
+                if locks:
+                    pd['locked_sections'] = sorted(list(locks))
                 profile['processed_data'] = pd
+                # Mark profile as user-edited for downstream logic/UI
+                profile['user_edited'] = True
             # Merge simple fields
             for key in ['filename','extracted_text','hints']:
                 if key in payload:

@@ -90,6 +90,13 @@ class EnhancedResuMatchModel:
                 # Combine title, description, and requirements into a single text
                 combined_text = f"{job.get('title', '')} {job.get('description', '')} {' '.join(job.get('requirements', []))}"
                 
+                # Heuristics for experience metadata if not present
+                jd_low = (job.get('description','') + ' ' + job.get('title','') + ' ' + ' '.join(job.get('requirements', []))).lower()
+                exp_level = job.get('experience_level') or ('intern' if 'intern' in jd_low else 'fresher')
+                min_years = job.get('min_experience_years') if isinstance(job.get('min_experience_years'), (int, float)) else (0 if exp_level == 'intern' else 1)
+                min_internships = job.get('min_internships') if isinstance(job.get('min_internships'), int) else (0 if exp_level == 'intern' else 0)
+                min_programs = job.get('min_programs') if isinstance(job.get('min_programs'), int) else 0
+
                 job_info = {
                     'id': job.get('id'),
                     'title': job.get('title', ''),
@@ -100,6 +107,10 @@ class EnhancedResuMatchModel:
                     'location': job.get('location', ''),
                     'duration': job.get('duration', ''),
                     'field': job.get('field', ''),
+                    'experience_level': exp_level,
+                    'min_experience_years': float(min_years),
+                    'min_internships': int(min_internships),
+                    'min_programs': int(min_programs),
                     'combined_text': combined_text
                 }
                 self.job_descriptions.append(job_info)
@@ -196,40 +207,59 @@ class EnhancedResuMatchModel:
             float: Location compatibility score (0-1)
         """
         try:
-            if not resume_locations or not job_location:
-                return 0.5  # Neutral score if no location info
-            
-            job_location_lower = job_location.lower()
-            resume_locations_lower = [loc.lower() for loc in resume_locations]
-            
-            # Check for exact match
+            if not job_location:
+                return 0.5  # Neutral if job has no location
+            # Normalize inputs
+            job_location_lower = (job_location or '').lower()
+            resume_locations_lower = [str(loc).lower() for loc in (resume_locations or []) if isinstance(loc, str)]
+            # If resume didn't list locations, try to parse from a single string (e.g., "Pune, India")
+            # This function expects caller to pass any top-level 'location' as well.
+
+            if not resume_locations_lower:
+                return 0.4  # Slightly below neutral when candidate gave nothing
+
+            # Exact/substring match
             for resume_loc in resume_locations_lower:
-                if resume_loc in job_location_lower or job_location_lower in resume_loc:
+                if resume_loc and (resume_loc in job_location_lower or job_location_lower in resume_loc):
                     return 1.0
-            
-            # Check for Indian city match
+
+            # City normalization and synonyms
+            synonyms = {
+                'bengaluru': 'bangalore',
+                'gurugram': 'gurgaon',
+                'mysuru': 'mysore',
+                'kozhikode': 'calicut'
+            }
+            def normalize_city(s: str) -> str:
+                s = s.strip().lower()
+                for k, v in synonyms.items():
+                    s = s.replace(k, v)
+                return s
+
             job_city = None
+            jl_norm = normalize_city(job_location_lower)
             for city in self.indian_cities:
-                if city in job_location_lower:
+                if city in jl_norm:
                     job_city = city
                     break
-            
+
             if job_city:
                 for resume_loc in resume_locations_lower:
-                    if city in resume_loc:
-                        return 0.8  # High score for same city
-            
-            # Check for country match
-            if 'india' in job_location_lower:
+                    rl = normalize_city(resume_loc)
+                    if job_city in rl:
+                        return 0.85  # High score for same city
+
+            # Country match (India)
+            if 'india' in jl_norm:
                 for resume_loc in resume_locations_lower:
-                    if 'india' in resume_loc:
+                    if 'india' in normalize_city(resume_loc):
                         return 0.6  # Medium score for same country
-            
-            return 0.3  # Low score for different locations
-            
+
+            return 0.25  # Mismatch
+
         except Exception as e:
             logger.error(f"Error calculating location score: {str(e)}")
-            return 0.5
+            return 0.4
     
     def calculate_skill_match_score(self, resume_skills: List[str], job_skills: List[str]) -> Tuple[float, List[str], List[str]]:
         """
@@ -237,38 +267,48 @@ class EnhancedResuMatchModel:
         
         Args:
             resume_skills (List[str]): Skills from resume
-            job_skills (List[str]): Skills required for job
+            job_skills (List[str]): Skills required for job (augmented list)
             
         Returns:
             Tuple[float, List[str], List[str]]: (match_score, matched_skills, missing_skills)
         """
         try:
+            resume_skills = [s for s in (resume_skills or []) if isinstance(s, str) and s.strip()]
+            job_skills = [s for s in (job_skills or []) if isinstance(s, str) and s.strip()]
             if not job_skills:
-                return 1.0, resume_skills, []
-            
-            resume_skills_lower = [skill.lower() for skill in resume_skills]
-            job_skills_lower = [skill.lower() for skill in job_skills]
-            
+                return 0.0, [], []  # No declared skills in job -> don't inflate score
+
+            resume_skills_lower = [skill.lower().strip() for skill in resume_skills]
+            job_skills_lower = [skill.lower().strip() for skill in job_skills]
+
             matched_skills = []
             missing_skills = []
-            
-            # Find matched skills
-            for job_skill in job_skills:
-                job_skill_lower = job_skill.lower()
-                for resume_skill in resume_skills:
-                    if (job_skill_lower in resume_skill.lower() or 
-                        resume_skill.lower() in job_skill_lower or
-                        self.are_skills_similar(job_skill_lower, resume_skill.lower())):
+
+            for job_skill in job_skills_lower:
+                found = False
+                for resume_skill in resume_skills_lower:
+                    if (job_skill in resume_skill or resume_skill in job_skill or self.are_skills_similar(job_skill, resume_skill)):
                         matched_skills.append(job_skill)
+                        found = True
                         break
-                else:
+                if not found:
                     missing_skills.append(job_skill)
-            
-            # Calculate match score
-            match_score = len(matched_skills) / len(job_skills) if job_skills else 1.0
-            
-            return match_score, matched_skills, missing_skills
-            
+
+            # Strict ratio based on job requirements
+            match_score = len(matched_skills) / max(1, len(job_skills_lower))
+
+            # Slightly dampen scores with very small intersections
+            if len(matched_skills) == 0:
+                match_score = 0.0
+            elif len(matched_skills) == 1 and len(job_skills_lower) >= 5:
+                match_score = min(match_score, 0.2)
+
+            # De-duplicate for output (restore original casing best-effort)
+            matched_uniq = sorted(list({m for m in matched_skills}))
+            missing_uniq = sorted(list({m for m in missing_skills}))
+
+            return match_score, matched_uniq, missing_uniq
+
         except Exception as e:
             logger.error(f"Error calculating skill match score: {str(e)}")
             return 0.0, [], []
@@ -431,6 +471,67 @@ class EnhancedResuMatchModel:
         }
         return difficulty_mapping.get(skill, 'Intermediate')
     
+    def _calculate_experience_match(self, resume_data: Dict[str, Any], job: Dict[str, Any]) -> Tuple[float, Dict[str, Any]]:
+        """Compute experience match score based on years, internships, and programs.
+        Returns (score in [0,1], details dict)."""
+        try:
+            import re
+            text = resume_data.get('cleaned_text') or ''
+            # Years from text (sum up simple 'X years' mentions, cap at 10)
+            years = 0.0
+            for m in re.findall(r"(\d+(?:\.\d+)?)\s*(?:years?|yrs?)", text, flags=re.I):
+                try:
+                    years += float(m)
+                except Exception:
+                    pass
+            years = min(years, 10.0)
+            # Internships from structured experience and text
+            internships = 0
+            for e in (resume_data.get('experience') or []):
+                if isinstance(e, dict) and 'position' in e and isinstance(e['position'], str) and ('intern' in e['position'].lower()):
+                    internships += 1
+            if internships == 0:
+                internships += len(re.findall(r"\bintern\b", text, flags=re.I))
+            # Programs participated: count hints in achievements/certifications
+            programs = 0
+            for a in (resume_data.get('achievements') or []):
+                if isinstance(a, str) and any(k in a.lower() for k in ['program', 'simulation', 'virtual experience']):
+                    programs += 1
+            for c in (resume_data.get('certifications') or []):
+                if isinstance(c, dict):
+                    nm = (c.get('name') or '') + ' ' + (c.get('issuer') or '')
+                    if any(k in nm.lower() for k in ['program', 'simulation', 'virtual experience']):
+                        programs += 1
+                elif isinstance(c, str) and any(k in c.lower() for k in ['program','simulation','virtual experience']):
+                    programs += 1
+
+            req_years = float(job.get('min_experience_years') or 0.0)
+            req_intern = int(job.get('min_internships') or 0)
+            req_prog = int(job.get('min_programs') or 0)
+
+            parts = []
+            # If job specifies requirement, compute ratio; else treat as satisfied
+            if req_years > 0:
+                parts.append(min(1.0, years / req_years))
+            if req_intern > 0:
+                parts.append(min(1.0, internships / req_intern))
+            if req_prog > 0:
+                parts.append(min(1.0, programs / req_prog))
+
+            score = 1.0 if not parts else float(sum(parts) / len(parts))
+            details = {
+                'resume_years': years,
+                'resume_internships': internships,
+                'resume_programs': programs,
+                'required_years': req_years,
+                'required_internships': req_intern,
+                'required_programs': req_prog
+            }
+            return score, details
+        except Exception as e:
+            logger.warning(f"Experience match failed: {e}")
+            return 0.5, {'error': str(e)}
+
     def predict_enhanced(self, resume_data: Dict[str, any], top_k: int = 5) -> List[Dict[str, Any]]:
         """
         Enhanced prediction with location, skill gap analysis, and learning suggestions
@@ -448,56 +549,115 @@ class EnhancedResuMatchModel:
             
             logger.info("Computing enhanced similarity...")
             
-            resume_text = resume_data['cleaned_text']
-            resume_skills = resume_data.get('skills', [])
-            resume_locations = resume_data.get('locations', [])
-            resume_field = resume_data.get('field_of_interest', [])
-            
-            # Get basic similarity scores
+            resume_text = resume_data.get('cleaned_text', '')
+            resume_skills = resume_data.get('skills', []) or []
+            # Merge top-level 'location' into locations list if present
+            resume_locations = list({
+                *(resume_data.get('locations', []) or []),
+                *( [resume_data.get('location')] if resume_data.get('location') else [] )
+            })
+            resume_field = resume_data.get('fields_of_interest') or resume_data.get('field_of_interest') or []
+            locks = set([str(s).lower() for s in (resume_data.get('locked_sections') or []) if isinstance(s, str)])
+
+            # Get basic similarity scores (top-K*2 to seed but also evaluate all jobs later)
             tfidf_results = self.predict_tfidf(resume_text, top_k * 2)
             sbert_results = self.predict_sentence_transformer(resume_text, top_k * 2)
             
-            # Create enhanced results
+            # Create lookup for quick retrieval
+            tfidf_map = {r['job_id']: r['similarity_score'] for r in tfidf_results}
+            sbert_map = {r['job_id']: r['similarity_score'] for r in sbert_results}
+
             enhanced_results = []
             
-            for i, job in enumerate(self.job_descriptions):
-                # Get similarity scores
-                tfidf_score = 0.0
-                sbert_score = 0.0
-                
-                for result in tfidf_results:
-                    if result['job_id'] == job['id']:
-                        tfidf_score = result['similarity_score']
-                        break
-                
-                for result in sbert_results:
-                    if result['job_id'] == job['id']:
-                        sbert_score = result['similarity_score']
-                        break
-                
+            for job in self.job_descriptions:
+                # Base semantic similarities (default 0 if not in the top-k seed)
+                tfidf_score = float(tfidf_map.get(job['id'], 0.0))
+                sbert_score = float(sbert_map.get(job['id'], 0.0))
+
+                # Derive/augment job skills from requirements/description if needed
+                job_skills = [s for s in (job.get('skills_needed') or []) if isinstance(s, str)]
+                if len(job_skills) < 5:
+                    import re
+                    tokens = []
+                    for r in (job.get('requirements') or []):
+                        if isinstance(r, str):
+                            tokens += re.findall(r'[A-Za-z][A-Za-z0-9\+\.#\-]{2,}', r)
+                    tokens += re.findall(r'[A-Za-z][A-Za-z0-9\+\.#\-]{2,}', job.get('description') or '')
+                    # keep plausible skill-like tokens
+                    keep = []
+                    for t in tokens:
+                        tl = t.lower()
+                        if any(x in tl for x in ['python','java','sql','node','react','django','flask','aws','azure','gcp','docker','kubernetes','ml','nlp','api','graphql','mongodb','mysql','postgres','android','ios','devops','linux','bash']):
+                            keep.append(tl)
+                    job_skills = sorted(list(dict.fromkeys(job_skills + keep)))
+
                 # Calculate location score
-                location_score = self.calculate_location_score(resume_locations, job['location'])
+                location_score = self.calculate_location_score(resume_locations, job.get('location', ''))
                 
                 # Calculate skill match
                 skill_match_score, matched_skills, missing_skills = self.calculate_skill_match_score(
-                    resume_skills, job.get('skills_needed', [])
+                    resume_skills, job_skills
                 )
+
+                # Experience match
+                experience_match_score, experience_details = self._calculate_experience_match(resume_data, job)
                 
-                # Calculate field match
-                field_match_score = 0.5  # Default
+                # Calculate field match (0 if fields present but not matching)
+                field_match_score = 0.0
                 if resume_field and job.get('field'):
-                    if any(field.lower() in job['field'].lower() for field in resume_field):
+                    if any((str(field).lower() in str(job.get('field','')).lower()) for field in resume_field):
                         field_match_score = 1.0
-                
-                # Calculate combined score with weights
-                combined_score = (
-                    tfidf_score * 0.25 +
-                    sbert_score * 0.35 +
-                    location_score * 0.15 +
-                    skill_match_score * 0.20 +
-                    field_match_score * 0.05
+                elif not resume_field or not job.get('field'):
+                    field_match_score = 0.0
+
+                # Re-weight with stronger emphasis on skills, reduce semantic inflation (add experience)
+                w_tfidf, w_sbert, w_skill, w_location, w_field, w_exp = 0.15, 0.20, 0.40, 0.15, 0.05, 0.05
+                base_score = (
+                    tfidf_score * w_tfidf +
+                    sbert_score * w_sbert +
+                    skill_match_score * w_skill +
+                    location_score * w_location +
+                    field_match_score * w_field +
+                    experience_match_score * w_exp
                 )
-                
+
+                # Gating/penalties to avoid fake high scores
+                penalties = {
+                    'skill_gate': 1.0,
+                    'location_gate': 1.0,
+                    'field_penalty': 0.0
+                }
+                # If user explicitly edited skills, enforce skill gate more strongly
+                skill_gate_threshold = 0.2
+                if ('skills' in locks) and skill_match_score < 0.2:
+                    penalties['skill_gate'] = 0.7
+                elif skill_match_score == 0.0:
+                    penalties['skill_gate'] = 0.7
+                elif skill_match_score < skill_gate_threshold:
+                    penalties['skill_gate'] = 0.85
+
+                # If user edited location and it's a mismatch, penalize more
+                if ('location' in locks) and location_score <= 0.3:
+                    penalties['location_gate'] = 0.8
+                elif location_score <= 0.3 and resume_locations:
+                    penalties['location_gate'] = 0.9
+
+                # If fields of interest exist and don't match, small penalty
+                if resume_field and field_match_score == 0.0:
+                    penalties['field_penalty'] = 0.03
+
+                combined_score = max(0.0, base_score * penalties['skill_gate'] * penalties['location_gate'] - penalties['field_penalty'])
+
+                # If all key dimensions match, force 100%
+                all_matched = (
+                    skill_match_score >= 0.999 and
+                    (location_score >= 0.85) and
+                    ((isinstance(resume_field, list) and len(resume_field) > 0 and field_match_score == 1.0) or (not resume_field)) and
+                    experience_match_score >= 0.999
+                )
+                if all_matched:
+                    combined_score = 1.0
+
                 # Generate learning suggestions for low-scoring jobs
                 learning_suggestions = []
                 if combined_score < 0.6 and missing_skills:
@@ -515,6 +675,10 @@ class EnhancedResuMatchModel:
                     'location': job['location'],
                     'duration': job['duration'],
                     'field': job.get('field', ''),
+                    'experience_level': job.get('experience_level'),
+                    'min_experience_years': job.get('min_experience_years'),
+                    'min_internships': job.get('min_internships'),
+                    'min_programs': job.get('min_programs'),
                     'similarity_score': combined_score,
                     'similarity_percentage': combined_score * 100,
                     'method': 'Enhanced',
@@ -523,13 +687,24 @@ class EnhancedResuMatchModel:
                         'sbert_score': sbert_score,
                         'location_score': location_score,
                         'skill_match_score': skill_match_score,
-                        'field_match_score': field_match_score
+                        'field_match_score': field_match_score,
+                        'experience_match_score': experience_match_score,
+                        'weights': {
+                            'tfidf': w_tfidf,
+                            'sbert': w_sbert,
+                            'skills': w_skill,
+                            'location': w_location,
+                            'field': w_field,
+                            'experience': w_exp
+                        },
+                        'penalties': penalties
                     },
                     'skill_analysis': {
                         'matched_skills': matched_skills,
                         'missing_skills': missing_skills,
                         'skill_match_percentage': skill_match_score * 100
                     },
+                    'experience_analysis': experience_details,
                     'learning_suggestions': learning_suggestions,
                     'location_preference': location_score > 0.7
                 }
@@ -540,7 +715,8 @@ class EnhancedResuMatchModel:
             enhanced_results.sort(key=lambda x: x['similarity_score'], reverse=True)
             enhanced_results = enhanced_results[:top_k]
             
-            logger.info(f"Enhanced prediction completed. Top similarity: {enhanced_results[0]['similarity_percentage']:.2f}%")
+            top_pct = enhanced_results[0]['similarity_percentage'] if enhanced_results else 0.0
+            logger.info(f"Enhanced prediction completed. Top similarity: {top_pct:.2f}%")
             return enhanced_results
             
         except Exception as e:
