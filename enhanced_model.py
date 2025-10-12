@@ -13,6 +13,7 @@ import logging
 from typing import List, Dict, Tuple, Any
 import pickle
 import os
+import random
 from collections import Counter
 
 # Configure logging
@@ -90,12 +91,39 @@ class EnhancedResuMatchModel:
                 # Combine title, description, and requirements into a single text
                 combined_text = f"{job.get('title', '')} {job.get('description', '')} {' '.join(job.get('requirements', []))}"
                 
-                # Heuristics for experience metadata if not present
+                # Heuristics + seeded randomization for experience metadata if not present
                 jd_low = (job.get('description','') + ' ' + job.get('title','') + ' ' + ' '.join(job.get('requirements', []))).lower()
-                exp_level = job.get('experience_level') or ('intern' if 'intern' in jd_low else 'fresher')
-                min_years = job.get('min_experience_years') if isinstance(job.get('min_experience_years'), (int, float)) else (0 if exp_level == 'intern' else 1)
-                min_internships = job.get('min_internships') if isinstance(job.get('min_internships'), int) else (0 if exp_level == 'intern' else 0)
-                min_programs = job.get('min_programs') if isinstance(job.get('min_programs'), int) else 0
+                seeded = random.Random(hash(job.get('id')) if job.get('id') is not None else 0)
+                exp_level = job.get('experience_level') or ('intern' if 'intern' in jd_low else seeded.choice(['fresher','junior']))
+                if isinstance(job.get('min_experience_years'), (int, float)):
+                    min_years = float(job.get('min_experience_years'))
+                else:
+                    if exp_level == 'intern':
+                        # avoid zero: require at least 0.5 year for interns
+                        min_years = seeded.choice([0.5, 1.0])
+                    elif exp_level == 'fresher':
+                        min_years = seeded.choice([0.5, 1.0])
+                    else:  # junior
+                        min_years = seeded.choice([1.0, 1.5, 2.0])
+                if isinstance(job.get('min_internships'), int):
+                    min_internships = int(job.get('min_internships'))
+                else:
+                    min_internships = seeded.choice([0, 1, 2])
+                if isinstance(job.get('min_programs'), int):
+                    min_programs = int(job.get('min_programs'))
+                else:
+                    min_programs = seeded.choice([0, 1])
+                # Ensure not all zeros
+                if (min_years == 0.0 and min_internships == 0 and min_programs == 0):
+                    min_internships = 1
+
+                # Normalize field_of_interest to a list
+                job_field = job.get('field', '')
+                job_foi = job.get('field_of_interest')
+                if isinstance(job_foi, str):
+                    job_foi = [job_foi]
+                if not isinstance(job_foi, list):
+                    job_foi = [job_field] if job_field else []
 
                 job_info = {
                     'id': job.get('id'),
@@ -106,7 +134,8 @@ class EnhancedResuMatchModel:
                     'skills_needed': job.get('skills_needed', []),
                     'location': job.get('location', ''),
                     'duration': job.get('duration', ''),
-                    'field': job.get('field', ''),
+                    'field': job_field,
+                    'field_of_interest': job_foi,
                     'experience_level': exp_level,
                     'min_experience_years': float(min_years),
                     'min_internships': int(min_internships),
@@ -505,6 +534,21 @@ class EnhancedResuMatchModel:
                 elif isinstance(c, str) and any(k in c.lower() for k in ['program','simulation','virtual experience']):
                     programs += 1
 
+            # Default 6 months for each internship/program if duration not given explicitly
+            derived_years = min(10.0, years + 0.5 * internships + 0.5 * programs)
+            # Count distinct companies in structured experience
+            company_count = 0
+            try:
+                companies = []
+                for e in (resume_data.get('experience') or []):
+                    if isinstance(e, dict):
+                        comp = (e.get('company') or '').strip()
+                        if comp:
+                            companies.append(comp.lower())
+                company_count = len(set(companies))
+            except Exception:
+                company_count = 0
+
             req_years = float(job.get('min_experience_years') or 0.0)
             req_intern = int(job.get('min_internships') or 0)
             req_prog = int(job.get('min_programs') or 0)
@@ -512,7 +556,7 @@ class EnhancedResuMatchModel:
             parts = []
             # If job specifies requirement, compute ratio; else treat as satisfied
             if req_years > 0:
-                parts.append(min(1.0, years / req_years))
+                parts.append(min(1.0, derived_years / req_years))
             if req_intern > 0:
                 parts.append(min(1.0, internships / req_intern))
             if req_prog > 0:
@@ -520,9 +564,11 @@ class EnhancedResuMatchModel:
 
             score = 1.0 if not parts else float(sum(parts) / len(parts))
             details = {
-                'resume_years': years,
+                'resume_years_explicit': years,
+                'resume_years_total': derived_years,
                 'resume_internships': internships,
                 'resume_programs': programs,
+                'resume_company_count': company_count,
                 'required_years': req_years,
                 'required_internships': req_intern,
                 'required_programs': req_prog
@@ -602,12 +648,23 @@ class EnhancedResuMatchModel:
                 # Experience match
                 experience_match_score, experience_details = self._calculate_experience_match(resume_data, job)
                 
-                # Calculate field match (0 if fields present but not matching)
+                # Calculate field match using job field_of_interest vs resume fields_of_interest
+                job_foi = job.get('field_of_interest') or []
                 field_match_score = 0.0
-                if resume_field and job.get('field'):
-                    if any((str(field).lower() in str(job.get('field','')).lower()) for field in resume_field):
-                        field_match_score = 1.0
-                elif not resume_field or not job.get('field'):
+                if isinstance(resume_field, list) and resume_field and isinstance(job_foi, list) and job_foi:
+                    rf = [str(x).lower() for x in resume_field if isinstance(x, str)]
+                    jf = [str(x).lower() for x in job_foi if isinstance(x, str)]
+                    # Overlap if any substring match either way
+                    match = False
+                    for a in rf:
+                        for b in jf:
+                            if a in b or b in a:
+                                match = True
+                                break
+                        if match:
+                            break
+                    field_match_score = 1.0 if match else 0.0
+                else:
                     field_match_score = 0.0
 
                 # Re-weight with stronger emphasis on skills, reduce semantic inflation (add experience)
@@ -651,8 +708,8 @@ class EnhancedResuMatchModel:
                 # If all key dimensions match, force 100%
                 all_matched = (
                     skill_match_score >= 0.999 and
-                    (location_score >= 0.85) and
-                    ((isinstance(resume_field, list) and len(resume_field) > 0 and field_match_score == 1.0) or (not resume_field)) and
+                    location_score >= 0.85 and
+                    field_match_score == 1.0 and
                     experience_match_score >= 0.999
                 )
                 if all_matched:
@@ -675,6 +732,7 @@ class EnhancedResuMatchModel:
                     'location': job['location'],
                     'duration': job['duration'],
                     'field': job.get('field', ''),
+                    'field_of_interest': job.get('field_of_interest', []),
                     'experience_level': job.get('experience_level'),
                     'min_experience_years': job.get('min_experience_years'),
                     'min_internships': job.get('min_internships'),

@@ -152,7 +152,7 @@
                                 
                                 {% if method == 'enhanced' and job.skill_analysis %}
                                 <div class="mt-3">
-                                    <h6 class="mb-2">Skill Analysis (including your fields of interest):</h6>
+                                    <h6 class="mb-2">Skill & Interest Analysis:</h6>
                                     {% if job.skill_analysis.matched_skills %}
                                     <div class="mb-2">
                                         <small class="text-success">✓ Matched Skills:</small>
@@ -178,6 +178,16 @@
                                     </div>
                                     {% endif %}
                                 </div>
+
+                                {% if method == 'enhanced' and job.experience_analysis %}
+                                <div class="mt-3">
+                                    <h6 class="mb-2">Experience Summary:</h6>
+                                    <div class="small text-muted">
+                                        <div>Your Experience: {{ job.experience_analysis.resume_years_total }} yr total (incl. 0.5 yr per intern/program) • {{ job.experience_analysis.resume_internships }} intern • {{ job.experience_analysis.resume_programs }} program</div>
+                                        <div>Required: {{ job.experience_analysis.required_years }} yr • {{ job.experience_analysis.required_internships }} intern • {{ job.experience_analysis.required_programs }} program</div>
+                                    </div>
+                                </div>
+                                {% endif %}
                                 
                                 {% elif job.requirements %}
                                 <div class="mt-3">
@@ -206,6 +216,12 @@
                                         <div>Location: {{ "%.1f"|format(job.breakdown.location_score * 100) }}%</div>
                                         <div>Skills: {{ "%.1f"|format(job.breakdown.skill_match_score * 100) }}%</div>
                                         <div>Field: {{ "%.1f"|format(job.breakdown.field_match_score * 100) }}%</div>
+                                        {% if job.breakdown.experience_match_score is defined %}
+                                        <div>Experience: {{ "%.1f"|format(job.breakdown.experience_match_score * 100) }}%</div>
+                                        {% endif %}
+                                        <div class="mt-2">
+                                            <small>Job Level: {{ job.experience_level or '—' }} • Req: {{ job.min_experience_years or 0 }} yr • {{ job.min_internships or 0 }} intern • {{ job.min_programs or 0 }} program</small>
+                                        </div>
                                     </div>
                                     {% elif method == 'combined' and job.tfidf_score and job.sbert_score %}
                                     <div class="small text-muted mb-2">
@@ -365,7 +381,14 @@ window.showJobDetails = async function(index) {
       <h6>Description</h6>
       <p>${job.description ?? ''}</p>
       <h6>Requirements</h6>
-      <p>${(job.requirements || []).join(', ')}</p>`;
+      <p>${(job.requirements || []).join(', ')}</p>
+      <h6>Field & Interests</h6>
+      <p>Field: ${job.field ?? '—'}</p>
+      ${Array.isArray(job.field_of_interest) && job.field_of_interest.length > 0 ? `<div>Field(s) of Interest: ${job.field_of_interest.map(f => `<span class=\"badge bg-info text-dark me-1\">${f}</span>`).join('')}</div>` : ''}
+      <h6 class=\"mt-3\">Experience</h6>
+      <div class=\"small text-muted\">Job Level: ${job.experience_level ?? '—'} • Required: ${(job.min_experience_years ?? 0)} yr • ${(job.min_internships ?? 0)} intern • ${(job.min_programs ?? 0)} program</div>
+      ${job.experience_analysis ? `<div class=\"small text-muted\">Your Experience: ${job.experience_analysis.resume_years_total} yr total (incl. 0.5 yr per intern/program) • ${job.experience_analysis.resume_internships} intern • ${job.experience_analysis.resume_programs} program</div>` : ''}
+    `;
 
     document.getElementById('jobDetailsBody').innerHTML = body;
     modal.show();
