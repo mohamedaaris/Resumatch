@@ -150,6 +150,136 @@
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     
+    <!-- Chatbot Floating Button & Modal -->
+    <style>
+    .chatbot-fab {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        z-index: 1050;
+        border-radius: 50%;
+        width: 56px;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .chatbot-window .modal-dialog {
+        position: fixed;
+        right: 20px;
+        bottom: 90px;
+        margin: 0;
+        width: 360px;
+        max-width: 90vw;
+    }
+    .chat-messages {
+        height: 320px;
+        overflow-y: auto;
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #e9ecef;
+    }
+    .msg {
+        background: #fff;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 8px 10px;
+        margin-bottom: 8px;
+        font-size: 0.95rem;
+        white-space: pre-wrap;
+    }
+    .msg-user {
+        background: #e7f1ff;
+        border-color: #cfe2ff;
+    }
+    .msg-bot {
+        background: #ffffff;
+    }
+    </style>
+
+    <button id="chatbotFab" class="btn btn-primary chatbot-fab" title="Ask ResuMatch AI">
+        <i class="fas fa-comments"></i>
+    </button>
+
+    <div class="modal fade chatbot-window" id="chatbotModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="fas fa-robot me-2"></i>ResuMatch Chat</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div id="chatMessages" class="chat-messages"></div>
+            <div class="input-group mt-3">
+              <input id="chatInput" type="text" class="form-control" placeholder="Ask: What jobs suit me?">
+              <button id="chatSend" class="btn btn-primary" type="button">
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+            <div id="chatHint" class="form-text mt-2">Tip: Upload your resume first, then ask for best-suited jobs.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    (function(){
+      const fab = document.getElementById('chatbotFab');
+      const modalEl = document.getElementById('chatbotModal');
+      const modal = new bootstrap.Modal(modalEl);
+      const messages = document.getElementById('chatMessages');
+      const input = document.getElementById('chatInput');
+      const sendBtn = document.getElementById('chatSend');
+
+      function addMsg(text, cls) {
+        const div = document.createElement('div');
+        div.className = 'msg ' + (cls || '');
+        div.textContent = text;
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+      }
+
+      function send() {
+        const q = (input.value || '').trim();
+        if (!q) return;
+        addMsg(q, 'msg-user');
+        input.value = '';
+        sendBtn.disabled = true;
+        fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: q })
+        })
+        .then(r => r.json())
+        .then(data => {
+          const reply = (data && (data.reply || data.message)) || 'Sorry, I could not generate a reply.';
+          addMsg(reply, 'msg-bot');
+        })
+        .catch(() => addMsg('Network error. Please try again.', 'msg-bot'))
+        .finally(() => { sendBtn.disabled = false; });
+      }
+
+      fab.addEventListener('click', () => {
+        if (messages.childElementCount === 0) {
+          addMsg('Hi! Ask me: "What is the best suited job for me?"', 'msg-bot');
+        }
+        modal.show();
+        input.focus();
+      });
+      sendBtn.addEventListener('click', send);
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
+    })();
+    </script>
+    
+    <!-- Agentic Bot Embed -->
+    <script defer>
+    document.body.appendChild(document.createElement('div')).setAttribute('id','chatBubbleRoot');
+    window.agx = '68efb16289351491814cd3cateeE82gtRYvbrYQaL/jHiA==|Vu8ArY/tg8OOHHG1XYFEqHA/BInI36+WjwZSLrOXunY=';
+    </script>
+    <script defer src="https://storage.googleapis.com/agentx-cdn-01/agentx-chat.js"></script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

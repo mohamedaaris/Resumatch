@@ -35,6 +35,7 @@ MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB
 
 # Feature flags
 ENABLE_OPENAI = os.getenv('ENABLE_OPENAI', '0') == '1'
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 # Create upload folder if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -1213,7 +1214,7 @@ def recommendations():
         
         # Generate enhanced recommendations
         logger.info(f"Generating enhanced recommendations using {method} method...")
-        
+
         if method == 'enhanced':
             recommendations = model.predict_enhanced(processed_data, top_k=5)
         elif method == 'tfidf':
@@ -1369,6 +1370,155 @@ def health_check():
         return jsonify(status)
     except Exception as e:
         return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
+
+def _build_live_query_from_profile(pd: Dict[str, Any]) -> Dict[str, str]:
+    """Build a JSearch query from processed resume data."""
+    skills = [s for s in (pd.get('skills') or []) if isinstance(s, str)]
+    interests = pd.get('fields_of_interest') or pd.get('field_of_interest') or []
+    interests = [s for s in interests if isinstance(s, str)]
+    location = pd.get('location') or (pd.get('locations') or [None])[0]
+    # Prefer internship keywords
+    base_terms = ['internship']
+    # Add top 2 skills and first field of interest
+    if skills:
+        base_terms.extend(skills[:2])
+    if interests:
+        base_terms.append(interests[0])
+    q = ' '.join([t for t in base_terms if t])
+    return {
+        'query': q.strip() or 'internship software developer',
+        'location': (location or '').strip()
+    }
+
+def fetch_live_jobs_jsearch(query: str, location: str = '', max_results: int = 10) -> list:
+    """Fetch live jobs/internships from RapidAPI JSearch."""
+    try:
+        if not RAPIDAPI_KEY:
+            return []
+        import requests
+        url = f"https://{RAPIDAPI_HOST}/search"
+        params = {
+            'query': query,
+            'page': '1',
+            'num_pages': '1',
+            'radius': '25',
+            'employment_types': 'INTERNSHIP',
+        }
+        if location:
+            params['location'] = location
+        headers = {
+            'X-RapidAPI-Key': RAPIDAPI_KEY,
+            'X-RapidAPI-Host': RAPIDAPI_HOST
+        }
+        resp = requests.get(url, headers=headers, params=params, timeout=12)
+        if resp.status_code != 200:
+            logger.warning(f"JSearch non-200: {resp.status_code} {resp.text[:200]}")
+            return []
+        data = resp.json()
+        results = data.get('data') or []
+        out = []
+        for it in results[:max_results]:
+            out.append({
+                'title': it.get('job_title'),
+                'company': it.get('employer_name'),
+                'location': it.get('job_city') or it.get('job_country'),
+                'posted_at': it.get('job_posted_at_datetime_utc'),
+                'apply_link': it.get('job_apply_link') or it.get('job_apply_is_direct') or it.get('job_google_link'),
+                'description': it.get('job_description')
+            })
+        return out
+    except Exception as e:
+        logger.warning(f"JSearch fetch failed: {e}")
+        return []
+
+@app.route('/api/chat', methods=['POST'])
+def api_chat():
+    """Simple chatbot endpoint that answers based on uploaded resume and internal model."""
+    try:
+        payload = request.get_json(silent=True) or {}
+        user_message = (payload.get('message') or '').strip()
+
+        profile_id = session.get('profile_id')
+        if not profile_id:
+            return jsonify({'success': False, 'reply': 'Please upload your resume first to get personalized suggestions.'}), 200
+        session_data = load_profile_data(profile_id)
+        if not session_data:
+            return jsonify({'success': False, 'reply': 'Please upload your resume first to get personalized suggestions.'}), 200
+
+        processed_data = (session_data or {}).get('processed_data') or {}
+        if not processed_data:
+            return jsonify({'success': False, 'reply': 'I could not find your resume data. Please re-upload your resume.'}), 200
+
+        # Compute top recommendations using the enhanced model
+        try:
+            recs = model.predict_enhanced(processed_data, top_k=5)
+        except Exception:
+            ct = (processed_data.get('cleaned_text') or '')
+            recs = model.predict_tfidf(ct, top_k=5) if ct else []
+
+        def build_plain_reply(recommendations):
+            if not recommendations:
+                return 'I do not have enough information to suggest jobs yet. Please check that your resume text was extracted.'
+            lines = []
+            for j in recommendations[:5]:
+                title = j.get('title') or ''
+                company = j.get('company') or ''
+                loc = j.get('location') or ''
+                score = j.get('similarity_percentage')
+                score_text = f" — {score:.1f}% match" if isinstance(score, (int, float)) else ''
+                parts = [p for p in [title, company, loc] if p]
+                if parts:
+                    lines.append(' • ' + ' | '.join(parts) + score_text)
+            header = 'Based on your resume, these roles look like the best fit:\n'
+            return header + '\n'.join(lines)
+
+        plain_reply = build_plain_reply(recs)
+
+        if ENABLE_OPENAI and OPENAI_API_KEY:
+            try:
+                from openai import OpenAI
+                import httpx
+                client = OpenAI(api_key=OPENAI_API_KEY, http_client=httpx.Client())
+                resume_brief = {
+                    'name': processed_data.get('name'),
+                    'location': processed_data.get('location'),
+                    'skills': processed_data.get('skills', [])[:15],
+                    'fields_of_interest': processed_data.get('fields_of_interest') or processed_data.get('field_of_interest') or []
+                }
+                job_lines = [
+                    {
+                        'title': j.get('title'),
+                        'company': j.get('company'),
+                        'location': j.get('location'),
+                        'match': j.get('similarity_percentage')
+                    } for j in recs[:5]
+                ]
+                system_prompt = 'You are a concise career assistant. Answer in at most 5 short bullet points.'
+                user_prompt = (
+                    f"User question: {user_message or 'What jobs are best suited for me?'}\n"
+                    f"Resume summary: {json.dumps(resume_brief, ensure_ascii=False)}\n"
+                    f"Top jobs: {json.dumps(job_lines, ensure_ascii=False)}\n"
+                    "Write a friendly, helpful answer referencing titles and companies with brief reasons."
+                )
+                resp = client.chat.completions.create(
+                    model='gpt-3.5-turbo',
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    max_tokens=300,
+                    temperature=0.2
+                )
+                ai_reply = (resp.choices[0].message.content or '').strip()
+                if ai_reply:
+                    return jsonify({'success': True, 'reply': ai_reply, 'raw': recs})
+            except Exception as _e:
+                logger.warning(f"OpenAI chat failed, falling back: {_e}")
+
+        return jsonify({'success': True, 'reply': plain_reply, 'raw': recs})
+    except Exception as e:
+        logger.error(f"Error in api/chat: {e}")
+        return jsonify({'success': False, 'reply': 'Sorry, something went wrong.'}), 500
 
 @app.route('/api/profile', methods=['GET','POST'])
 def api_profile():
