@@ -2,12 +2,16 @@ Flask==2.3.3
 PyMuPDF==1.23.8
 pytesseract==0.3.10
 Pillow==10.0.1
-spacy==3.7.2
-sentence-transformers==2.2.2
+# spaCy optional; fallback implemented
+# spacy==3.5.4
+# sentence-transformers optional; SBERT disabled if unavailable
+# sentence-transformers==2.2.2
 scikit-learn==1.3.2
-numpy==1.24.3
-pandas==2.0.3
+numpy==1.26.4
+pandas==1.5.3
 python-docx==0.8.11
+opencv-python==4.9.0.80
+networkx==3.1
 Werkzeug==2.3.7
 Jinja2==3.1.2
 gunicorn==21.2.0

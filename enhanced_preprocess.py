@@ -4,7 +4,7 @@ Handles text cleaning, tokenization, lemmatization, and Named Entity Recognition
 with improved location understanding and detailed resume extraction
 """
 
-import spacy
+# import spacy  # Lazy import inside class to avoid heavy dependency
 import re
 import logging
 from typing import List, Dict, Set, Tuple, Any
@@ -21,9 +21,15 @@ class EnhancedTextPreprocessor:
     def __init__(self):
         """Initialize the enhanced text preprocessor with spaCy model"""
         try:
-            # Load spaCy model
-            self.nlp = spacy.load("en_core_web_sm")
-            logger.info("Successfully loaded spaCy model: en_core_web_sm")
+            # Lazy import spaCy and load model
+            self.nlp = None
+            try:
+                import spacy as _spacy
+                self.nlp = _spacy.load("en_core_web_sm")
+                logger.info("Successfully loaded spaCy model: en_core_web_sm")
+            except Exception as spx:
+                logger.warning(f"spaCy unavailable or model not loaded; falling back to regex-only NLP: {spx}")
+                self.nlp = None
             
             # Canonical section headings (lowercase)
             self.section_aliases = {
@@ -164,9 +170,8 @@ class EnhancedTextPreprocessor:
             
             logger.info("Enhanced preprocessor initialized successfully")
             
-        except OSError:
-            logger.error("spaCy model 'en_core_web_sm' not found. Please install it with: python -m spacy download en_core_web_sm")
-            raise
+        except Exception as e:
+            logger.warning(f"Enhanced preprocessor initialized in degraded mode: {e}")
     
     def clean_text(self, text: str) -> str:
         """
@@ -225,11 +230,15 @@ class EnhancedTextPreprocessor:
             
             locations = set()
             
-            # Extract using spaCy NER
-            doc = self.nlp(text)
-            for ent in doc.ents:
-                if ent.label_ in ['GPE', 'LOC']:  # Geopolitical entities and locations
-                    locations.add(ent.text.strip())
+            # Extract using spaCy NER if available
+            if self.nlp is not None:
+                try:
+                    doc = self.nlp(text)
+                    for ent in doc.ents:
+                        if ent.label_ in ['GPE', 'LOC']:
+                            locations.add(ent.text.strip())
+                except Exception:
+                    pass
             
             # Extract Indian cities using pattern matching
             words = text.lower().split()
@@ -334,17 +343,17 @@ class EnhancedTextPreprocessor:
                 skills.update(matches)
             
             # Extract using spaCy NER for technical terms
-            doc = self.nlp(text)
-            for token in doc:
-                if token.pos_ in ['NOUN', 'PROPN'] and len(token.text) > 2:
+            if self.nlp is not None:
+                doc = self.nlp(text)
+                for token in doc:
                     token_lower = token.text.lower()
-                    
-                    # Check if it's likely a technical skill and not a location/non-skill word
-                    if (token_lower not in self.non_skill_words and 
-                        token_lower not in self.indian_cities and
-                        any(keyword in token_lower for keyword in 
-                            ['api', 'sql', 'js', 'ml', 'ai', 'dev', 'ops', 'web', 'app', 'data', 'tech', 'soft', 'hard'])):
-                        skills.add(token.text)
+                    if token.pos_ in ['NOUN', 'PROPN'] and len(token.text) > 2:
+                        # Check if it's likely a technical skill and not a location/non-skill word
+                        if (token_lower not in self.non_skill_words and 
+                            token_lower not in self.indian_cities and
+                            any(keyword in token_lower for keyword in 
+                                ['api', 'sql', 'js', 'ml', 'ai', 'dev', 'ops', 'web', 'app', 'data', 'tech', 'soft', 'hard'])):
+                            skills.add(token.text)
             
             # Clean and normalize skills
             cleaned_skills = []
@@ -396,10 +405,11 @@ class EnhancedTextPreprocessor:
                 certifications.update(matches)
             
             # Extract using spaCy NER
-            doc = self.nlp(text)
-            for token in doc:
-                if 'cert' in token.text.lower() or 'diploma' in token.text.lower():
-                    certifications.add(token.text)
+            if self.nlp is not None:
+                doc = self.nlp(text)
+                for token in doc:
+                    if 'cert' in token.text.lower() or 'diploma' in token.text.lower():
+                        certifications.add(token.text)
             
             cert_list = list(certifications)
             cert_list.sort()
@@ -867,7 +877,12 @@ class EnhancedTextPreprocessor:
         try:
             logger.info("Extracting named entities...")
             
-            doc = self.nlp(text)
+            doc = None
+            if self.nlp is not None:
+                doc = self.nlp(text)
+            else:
+                logger.warning("spaCy model not loaded, skipping entity extraction.")
+                return entities # Return empty entities if spaCy is not available
             entities = {
                 'PERSON': [],
                 'ORG': [],
@@ -885,6 +900,13 @@ class EnhancedTextPreprocessor:
                 'PRODUCT': [],
                 'WORK_OF_ART': []
             }
+            
+            doc = None
+            if self.nlp is not None:
+                doc = self.nlp(text)
+            else:
+                logger.warning("spaCy model not loaded, skipping entity extraction.")
+                return entities # Return empty entities if spaCy is not available
             
             for ent in doc.ents:
                 if ent.label_ in entities:
@@ -914,7 +936,13 @@ class EnhancedTextPreprocessor:
         try:
             logger.info("Tokenizing and lemmatizing text...")
             
-            doc = self.nlp(text)
+            doc = None
+            if self.nlp is not None:
+                doc = self.nlp(text)
+            else:
+                logger.warning("spaCy model not loaded, skipping tokenization and lemmatization.")
+                return [] # Return empty list if spaCy is not available
+            
             tokens = []
             
             for token in doc:
@@ -932,12 +960,10 @@ class EnhancedTextPreprocessor:
             logger.error(f"Error tokenizing and lemmatizing: {str(e)}")
             raise
 
-
 # Backward compatibility
 class TextPreprocessor(EnhancedTextPreprocessor):
     """Backward compatibility wrapper"""
     pass
-
 
 # Convenience functions for easy usage
 def preprocess_resume_text(text: str) -> Dict[str, any]:
@@ -953,11 +979,9 @@ def preprocess_resume_text(text: str) -> Dict[str, any]:
     preprocessor = EnhancedTextPreprocessor()
     return preprocessor.preprocess_resume(text)
 
-
 def preprocess_job_description_text(text: str) -> Dict[str, any]:
     """
     Convenience function to preprocess job description text
-    
     Args:
         text (str): Raw job description text
         
@@ -966,7 +990,6 @@ def preprocess_job_description_text(text: str) -> Dict[str, any]:
     """
     preprocessor = EnhancedTextPreprocessor()
     return preprocessor.preprocess_job_description(text)
-
 
 if __name__ == "__main__":
     # Test the enhanced text preprocessor
@@ -991,6 +1014,10 @@ if __name__ == "__main__":
     result = preprocessor.preprocess_resume(sample_text)
     print(f"Extracted skills: {result['skills']}")
     print(f"Extracted locations: {result['locations']}")
+    print(f"Extracted certifications: {result['certifications']}")
+    print(f"Extracted projects: {result['projects']}")
+    print(f"Extracted achievements: {result['achievements']}")
+    print(f"Field of interest: {result['field_of_interest']}")
     print(f"Extracted certifications: {result['certifications']}")
     print(f"Extracted projects: {result['projects']}")
     print(f"Extracted achievements: {result['achievements']}")

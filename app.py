@@ -1344,10 +1344,18 @@ def api_jobs():
             })
         
         return jsonify({'jobs': jobs})
-        
+
     except Exception as e:
         logger.error(f"Error in API jobs: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+
+
+
+
+
+
+
 
 @app.route('/health')
 def health_check():

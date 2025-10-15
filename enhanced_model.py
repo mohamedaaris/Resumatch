@@ -4,10 +4,10 @@ Implements advanced matching with location preferences, skill gap analysis, and 
 """
 
 import numpy as np
-import pandas as pd
+# import pandas as pd  # Removed to avoid heavy dependency; not used
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from sentence_transformers import SentenceTransformer
+# from sentence_transformers import SentenceTransformer  # Lazy import when available
 import json
 import logging
 from typing import List, Dict, Tuple, Any
@@ -57,24 +57,23 @@ class EnhancedResuMatchModel:
         logger.info(f"Initialized Enhanced ResuMatch model with Sentence-BERT model: {model_name}")
     
     def load_sentence_transformer(self):
-        """Load the Sentence-BERT model (optionally using a Hugging Face token)"""
+        """Load the Sentence-BERT model (optionally using a Hugging Face token). If unavailable, disable SBERT."""
         try:
             logger.info(f"Loading Sentence-BERT model: {self.model_name}")
+            from sentence_transformers import SentenceTransformer as _SBERT
             import os
             hf_token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN") or os.getenv("HUGGING_FACE_HUB_TOKEN")
             if hf_token:
                 try:
-                    # Older API
-                    self.sentence_transformer = SentenceTransformer(self.model_name, use_auth_token=hf_token)
+                    self.sentence_transformer = _SBERT(self.model_name, use_auth_token=hf_token)
                 except TypeError:
-                    # Newer API may use `token` kwarg
-                    self.sentence_transformer = SentenceTransformer(self.model_name, token=hf_token)
+                    self.sentence_transformer = _SBERT(self.model_name, token=hf_token)
             else:
-                self.sentence_transformer = SentenceTransformer(self.model_name)
+                self.sentence_transformer = _SBERT(self.model_name)
             logger.info("Sentence-BERT model loaded successfully")
         except Exception as e:
-            logger.error(f"Error loading Sentence-BERT model: {str(e)}")
-            raise
+            logger.warning(f"SBERT disabled (transformers/torch unavailable): {str(e)}")
+            self.sentence_transformer = None
     
     def load_job_descriptions(self, job_data: List[Dict[str, Any]]):
         """
@@ -187,9 +186,12 @@ class EnhancedResuMatchModel:
             
             if self.sentence_transformer is None:
                 self.load_sentence_transformer()
-            
+            if self.sentence_transformer is None:
+                self.job_embeddings_sbert = None
+                logger.info("SBERT unavailable; proceeding without semantic embeddings.")
+                return
             self.job_embeddings_sbert = self.sentence_transformer.encode(texts)
-            logger.info(f"Sentence-BERT embeddings generated successfully. Shape: {self.job_embeddings_sbert.shape}")
+            logger.info(f"Sentence-BERT embeddings generated successfully. Shape: {getattr(self.job_embeddings_sbert, 'shape', '?')}")
             
         except Exception as e:
             logger.error(f"Error generating Sentence-BERT embeddings: {str(e)}")
@@ -214,8 +216,11 @@ class EnhancedResuMatchModel:
             # Fit TF-IDF
             self.fit_tfidf(texts)
             
-            # Fit Sentence-BERT
-            self.fit_sentence_transformer(texts)
+            # Fit Sentence-BERT (optional)
+            try:
+                self.fit_sentence_transformer(texts)
+            except Exception as _e:
+                logger.warning(f"Skipping SBERT embeddings: {_e}")
             
             self.is_fitted = True
             logger.info("Enhanced ResuMatch model fitted successfully")
@@ -607,7 +612,12 @@ class EnhancedResuMatchModel:
 
             # Get basic similarity scores (top-K*2 to seed but also evaluate all jobs later)
             tfidf_results = self.predict_tfidf(resume_text, top_k * 2)
-            sbert_results = self.predict_sentence_transformer(resume_text, top_k * 2)
+            sbert_results = []
+            if self.job_embeddings_sbert is not None:
+                try:
+                    sbert_results = self.predict_sentence_transformer(resume_text, top_k * 2)
+                except Exception:
+                    sbert_results = []
             
             # Create lookup for quick retrieval
             tfidf_map = {r['job_id']: r['similarity_score'] for r in tfidf_results}
@@ -824,7 +834,8 @@ class EnhancedResuMatchModel:
         try:
             if not self.is_fitted:
                 raise ValueError("Model must be fitted before making predictions")
-            
+            if self.job_embeddings_sbert is None or self.sentence_transformer is None:
+                return []
             # Generate embedding for resume text
             resume_embedding = self.sentence_transformer.encode([resume_text])
             

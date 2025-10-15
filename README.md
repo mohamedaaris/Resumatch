@@ -1,27 +1,25 @@
-# ResuMatch AI
+# ResuMatch-X: A Graph-Semantic and Explainable Internship Recommendation System with Adaptive Learning
 
-A smart internship recommendation system powered by OCR, NLP, and machine learning. ResuMatch AI analyzes uploaded resumes and matches them with internship descriptions using advanced text processing and similarity algorithms.
+ResuMatch-X upgrades the original ResuMatch AI into a research-grade framework that combines a hybrid Graph–Semantic matcher, domain-adaptive weighting, skill ontology normalization, explainable recommendations, and an interactive feedback loop.
 
-## 🚀 Features
+## 🚀 Novelty & Features
 
 - **Multi-format Resume Processing**: Supports PDF, DOCX, and image files (JPG, PNG, BMP, TIFF, GIF)
 - **Advanced OCR**: Uses PyMuPDF and Tesseract for robust text extraction
 - **NLP Processing**: spaCy-based text cleaning, tokenization, and Named Entity Recognition
-- **Dual Similarity Matching**: 
-  - TF-IDF vectorization for keyword-based matching
-  - Sentence-BERT embeddings for semantic similarity
-- **Web Interface**: Beautiful Bootstrap-based Flask application
-- **Real-time Analysis**: Instant resume processing and recommendations
-- **API Endpoints**: RESTful API for integration with other systems
+- Enhanced recommendation algorithms using multiple approaches
+- Semantic similarity matching with Sentence-BERT
+- TF-IDF based keyword matching
+- Combined scoring methods for optimal results
 
 ## 🛠️ Technology Stack
 
-- **Backend**: Python, Flask
-- **OCR**: PyMuPDF, pytesseract, Pillow
-- **NLP**: spaCy, sentence-transformers
-- **ML**: scikit-learn, numpy, pandas
-- **Frontend**: HTML, CSS, JavaScript, Bootstrap
-- **Document Processing**: python-docx
+- Backend: Python, Flask
+- OCR: PyMuPDF, pytesseract, Pillow
+- NLP: spaCy (>=3.7), sentence-transformers (MiniLM)
+- ML: scikit-learn, numpy; Graph: networkx
+- Frontend: HTML/CSS/JS + Plotly for graph visualization
+- Document Processing: python-docx
 
 ## 📋 Prerequisites
 
@@ -86,26 +84,17 @@ A smart internship recommendation system powered by OCR, NLP, and machine learni
 ## 📁 Project Structure
 
 ```
-resumatch-ai/
-├── app.py                 # Main Flask application
-├── extract_text.py        # OCR and document parsing
-├── preprocess.py          # NLP text preprocessing
-├── model.py              # Similarity matching models
-├── config.py             # Configuration settings
-├── utils.py              # Utility functions
-├── requirements.txt      # Python dependencies
-├── README.md            # This file
+Resumatch_warp/
+├── app.py
+├── models/
+│   ├── enhanced_model.py    # Enhanced matching algorithms
+│   └── enhanced_preprocess.py # Enhanced text preprocessing
 ├── data/
-│   └── sample_internships.json  # Sample job data
-├── templates/            # HTML templates
-│   ├── base.html
-│   ├── index.html
-│   ├── upload.html
-│   ├── recommendations.html
-│   └── error.html
-├── uploads/              # Uploaded files (created automatically)
-├── logs/                 # Log files (created automatically)
-└── results/              # Analysis results (created automatically)
+│   └── sample_internships.json
+├── templates/
+│   └── ...
+├── requirements.txt
+└── ...
 ```
 
 ## 🔧 Usage
@@ -118,13 +107,11 @@ resumatch-ai/
 
 ### API Endpoints
 
-- `GET /` - Home page
-- `GET /upload` - Upload page
-- `POST /upload` - Handle file upload
-- `GET /recommendations` - View recommendations
-- `POST /api/recommend` - API for recommendations
-- `GET /api/jobs` - Get all available jobs
-- `GET /health` - Health check
+- `/upload` - Upload and process resume files
+- `/recommendations` - View matched internships
+- `/api/recommend` - API endpoint for recommendations
+- `/api/jobs` - Get all available jobs
+- `/health` - Health check endpoint
 
 ### API Usage Example
 
@@ -169,10 +156,10 @@ recommendations = data['recommendations']
 - Captures semantic similarity
 - Better for contextual understanding
 
-#### Combined Method
-- Weighted combination of both methods
-- Default weights: 30% TF-IDF, 70% Sentence-BERT
-- Provides balanced matching approach
+#### Enhanced Combined Method
+- Combines TF-IDF and Sentence-BERT approaches
+- Uses skill extraction and matching
+- Provides detailed similarity scores and explanations
 
 ## ⚙️ Configuration
 
@@ -223,6 +210,24 @@ The system comes with sample internship data in `data/sample_internships.json`:
 ### Logs
 
 Check `logs/resumatch.log` for detailed error information.
+
+## 📈 Model Workflow Diagram
+
+```mermaid
+flowchart TD
+  A[Resume Upload/OCR] --> B[NLP Preprocess (spaCy)]
+  B --> C[Skills + Cleaned Text]
+  C --> D[TF-IDF Vectorize]
+  C --> E[MiniLM Embeddings]
+  C --> F[Ontology Normalizer]
+  D --> G[Graph Edges]
+  E --> G
+  F --> G
+  G[Hybrid Graph + PageRank] --> H[Explainable Recommendations]
+  H --> I[User Feedback]
+  I --> J[Adaptive Weight Update (per-domain)]
+  J --> G
+```
 
 ## 🚀 Deployment
 

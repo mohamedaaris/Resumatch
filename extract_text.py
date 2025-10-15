@@ -4,7 +4,6 @@ Handles OCR and document parsing for PDF, DOCX, and image files
 """
 
 import fitz  # PyMuPDF
-import pytesseract
 from PIL import Image
 import docx
 import io
@@ -21,9 +20,16 @@ class TextExtractor:
     
     def __init__(self):
         """Initialize the text extractor"""
-        # Set tesseract path for Windows (adjust if needed)
-        if os.name == 'nt':  # Windows
-            pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+        # Lazily load pytesseract to avoid hard dependency and pandas/numpy conflicts
+        self._pytesseract = None
+        try:
+            import pytesseract as _pt
+            # Set tesseract path for Windows (adjust if needed)
+            if os.name == 'nt':
+                _pt.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
+            self._pytesseract = _pt
+        except Exception as _e:
+            logger.warning(f"pytesseract not available or misconfigured; OCR will be disabled: {_e}")
     
     def extract_from_pdf(self, file_path: str) -> str:
         """
@@ -105,8 +111,11 @@ class TextExtractor:
             if image.mode != 'RGB':
                 image = image.convert('RGB')
             
-            # Use pytesseract for OCR
-            text = pytesseract.image_to_string(image, lang='eng')
+# Use pytesseract for OCR
+            if not self._pytesseract:
+                logger.warning("OCR disabled (pytesseract unavailable)")
+                return ""
+            text = self._pytesseract.image_to_string(image, lang='eng')
             
             logger.info(f"Successfully extracted text from image ({len(text)} characters)")
             return text
@@ -141,8 +150,12 @@ class TextExtractor:
                 # Convert to PIL Image
                 image = Image.open(io.BytesIO(img_data))
                 
-                # Use OCR
-                page_text = pytesseract.image_to_string(image, lang='eng')
+# Use OCR
+                if not self._pytesseract:
+                    logger.warning("OCR disabled (pytesseract unavailable)")
+                    page_text = ""
+                else:
+                    page_text = self._pytesseract.image_to_string(image, lang='eng')
                 text += page_text + "\n"
             
             doc.close()
@@ -232,7 +245,11 @@ class TextExtractor:
                         pix = page.get_pixmap(matrix=mat)
                         img_data = pix.tobytes("png")
                         image = Image.open(io.BytesIO(img_data))
-                        page_text = pytesseract.image_to_string(image, lang='eng')
+                        if not self._pytesseract:
+                            logger.warning("OCR disabled (pytesseract unavailable)")
+                            page_text = ""
+                        else:
+                            page_text = self._pytesseract.image_to_string(image, lang='eng')
                         text += page_text + "\n"
                     
                     doc.close()
@@ -257,7 +274,10 @@ class TextExtractor:
                 image = Image.open(io.BytesIO(file_bytes))
                 if image.mode != 'RGB':
                     image = image.convert('RGB')
-                return pytesseract.image_to_string(image, lang='eng')
+                if not self._pytesseract:
+                    logger.warning("OCR disabled (pytesseract unavailable)")
+                    return ""
+                return self._pytesseract.image_to_string(image, lang='eng')
             
             else:
                 raise ValueError(f"Unsupported file type: {file_type}")

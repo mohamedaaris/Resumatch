@@ -18,35 +18,35 @@ from utils import setup_logging
 
 def main():
     """Main function to run the ResuMatch AI application"""
-    
+
     # Setup logging
     logger = setup_logging(
         log_level=config['default'].LOG_LEVEL,
         log_file=str(config['default'].LOG_FILE)
     )
-    
+
     try:
         logger.info("Starting ResuMatch AI application...")
-        
+
         # Create necessary directories
         os.makedirs('uploads', exist_ok=True)
         os.makedirs('logs', exist_ok=True)
         os.makedirs('results', exist_ok=True)
-        
+
         # Initialize model
         logger.info("Initializing ResuMatch model...")
         initialize_model()
-        
+
         # Run the application
         logger.info("ResuMatch AI application started successfully!")
         logger.info("Access the application at: http://localhost:5000")
-        
+
         app.run(
             debug=config['default'].DEBUG,
             host='0.0.0.0',
             port=5000
         )
-        
+
     except KeyboardInterrupt:
         logger.info("Application stopped by user")
     except Exception as e:
