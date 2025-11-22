@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  resumatch:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: resumatch-ai
+    ports:
+      - "5000:5000"
+    volumes:
+      # Persist uploads and profiles across container restarts
+      - ./uploads:/app/uploads
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+      - ./results:/app/results
+    environment:
+      - FLASK_ENV=production
+      - DEBUG=0
+      # Set these if you want to enable OpenAI features
+      # - ENABLE_OPENAI=1
+      # - OPENAI_API_KEY=your_openai_key_here
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
